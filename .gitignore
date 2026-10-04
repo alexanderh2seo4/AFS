@@ -1,3 +1,17 @@
 # Local authentication secrets and private login verification
 .afser-password
 afser-login-confirmed.png
+
+# Data, sessions, logs and the separately versioned MCP service stay local.
+.private-data/
+mcp/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+node_modules/
+.sites-runtime/
+*.log
+.DS_Store
