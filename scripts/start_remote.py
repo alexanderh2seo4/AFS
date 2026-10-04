@@ -230,7 +230,7 @@ def run(config):
                 if service is None or service.poll() is not None:
                     terminate(tunnel)
                     tunnel = None
-                    service = subprocess.Popen(command(config, "serve"), stdout=service_log, stderr=subprocess.STDOUT, start_new_session=True)
+                    service = subprocess.Popen(command(config, "serve", "--skip-initial-sync"), stdout=service_log, stderr=subprocess.STDOUT, start_new_session=True)
                     deadline = time.monotonic() + 60
                     while not loopback_ready(config["port"]) and service.poll() is None and time.monotonic() < deadline and not STOP.wait(0.5):
                         pass
