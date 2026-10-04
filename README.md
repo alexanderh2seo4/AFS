@@ -40,11 +40,20 @@ uv run afser-data --data-dir ../.private-data invite \
 
 The invite carries the access code in the URL fragment, which is removed immediately after the website reads it. It is not sent to GitHub in an HTTP request or included in an AFSer source link. The browser keeps the code only for its current session; records are not stored by the website.
 
-For remote service preparation/start/status, use `scripts/start_remote.py --help`. Open the private invite locally to retrieve the latest volunteer link; do not paste it into public issues or repository files. Use `afser-data revoke-all` to invalidate access.
+For remote service preparation/start/status, use `scripts/start_remote.py --help`. The current installation runs from the authorized desktop session:
+
+```sh
+python3 scripts/start_remote.py background
+python3 scripts/start_remote.py status
+```
+
+Use `stop-background` or `restart-background` for this session service. It supervises the bridge and tunnel, but does not restart after logging in or rebooting. macOS blocked the generated LaunchAgent's access to this Documents folder; start-at-login installation needs that runtime's Documents permission first. The failed LaunchAgent was removed.
+
+Open the private invite locally to retrieve the latest volunteer link; do not paste it into public issues or repository files. Use `afser-data revoke-all` to invalidate access.
 
 ## Source updates and coverage
 
-The importer uses AFSer's authenticated read-only APIs and the actual interview task board. It checks complete list responses, follows board pagination, partitions capped student lists by chapter, and verifies interview signup availability. It retains original source payloads locally and prints only counts and safe error codes. All active, cancelled and historical source fields returned by supported endpoints are retained in raw storage; only current relevant records enter the maps.
+The importer uses AFSer's authenticated read-only APIs and the actual interview task board. It checks complete list responses, follows board pagination, partitions capped student lists by chapter and source status/year, and verifies interview signup availability. It retains original source payloads locally and prints only counts and safe error codes. All active, cancelled and historical source fields returned by supported endpoints are retained in raw storage; only current relevant records enter the maps. Open interviews with no confirmed chapter or location remain visible as **Komitee noch offen** in the explicit All view, without an invented map point.
 
 Automatic updates run every 30 minutes while the local service runs. A sync activates atomically only after all required sources validate. If AFSer authentication expires or source structure changes, the previous complete snapshot remains available. Optional unsupported historical API pagination is reported separately in the local coverage manifest, rather than presented as complete.
 

@@ -225,7 +225,7 @@ def run(config):
         try:
             if loopback_ready(config["port"]):
                 raise RemoteError("The map API port is already occupied; stop the previous local service first.")
-            update_state(running=True, supervisorPid=os.getpid(), website=config["website"], inviteReady=False, endpoint=None, mode="temporary-quick-tunnel")
+            update_state(running=True, supervisorPid=os.getpid(), website=config["website"], inviteReady=False, endpoint=None, mode="temporary-quick-tunnel", hostingMode=os.environ.get("AFSER_SUPERVISOR_MODE", "foreground"))
             while not STOP.is_set():
                 if service is None or service.poll() is not None:
                     terminate(tunnel)
@@ -276,6 +276,79 @@ def launch_target():
     return f"gui/{os.getuid()}/{LABEL}"
 
 
+def background():
+    """Start from this authorized session without involving launchd.
+
+    macOS may deny a LaunchAgent access to a project inside Documents even when
+    Codex can access it. Direct children inherit this session's access. This mode
+    does not install login persistence or change any macOS privacy permission.
+    """
+    config = read_config(PRIVATE / "remote-config.json", None)
+    if not config:
+        raise RemoteError("Prepare the private supervisor before starting it in the background.")
+    if sys.platform == "darwin" and subprocess.run(["launchctl", "print", launch_target()], capture_output=True).returncode == 0:
+        raise RemoteError("Uninstall the existing LaunchAgent before using current-session background mode.")
+    private_directory(PRIVATE / "launch")
+    lock = os.open(PRIVATE / "remote-run.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RemoteError("The AFS map supervisor is already running.") from None
+    finally:
+        os.close(lock)
+    descriptors = []
+    try:
+        for filename in ("background.log", "background-error.log"):
+            path = PRIVATE / "launch" / filename
+            if path.is_symlink():
+                raise RemoteError("A private log file must not be a symlink.")
+            descriptor = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_APPEND, 0o600)
+            os.fchmod(descriptor, 0o600)
+            descriptors.append(descriptor)
+        process = subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "run"],
+            cwd=ROOT,
+            stdin=subprocess.DEVNULL,
+            stdout=descriptors[0],
+            stderr=descriptors[1],
+            env={**os.environ, "AFSER_SUPERVISOR_MODE": "current-session-background"},
+            start_new_session=True,
+        )
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            print(json.dumps({"started": True, "supervisorPid": process.pid, "hostingMode": "current-session-background", "persistentAcrossLogin": False, "invitePath": str(PRIVATE / "invite.html")}))
+            return
+        raise RemoteError("The current-session supervisor exited during startup; check its private error log.")
+    finally:
+        for descriptor in descriptors:
+            os.close(descriptor)
+
+
+def stop_background():
+    state = read_config(STATE, {})
+    pid = state.get("supervisorPid")
+    if state.get("hostingMode") != "current-session-background" or not isinstance(pid, int) or pid <= 1 or pid == os.getpid():
+        raise RemoteError("No current-session background supervisor is recorded for this project.")
+    # A stale PID must never authorize stopping an unrelated process. Read only
+    # its command metadata, retain it in memory, and never forward its output.
+    process = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True)
+    expected = str(Path(__file__).resolve()) + " run"
+    if process.returncode or expected not in process.stdout:
+        raise RemoteError("The recorded background supervisor is no longer running; no process was stopped.")
+    os.kill(pid, signal.SIGTERM)
+    deadline = time.monotonic() + 25
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            print("Current-session private map supervisor stopped.")
+            return
+        time.sleep(0.2)
+    raise RemoteError("The background supervisor is still stopping; check its private status before restarting.")
+
+
 def owned_plist():
     return Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
 
@@ -300,7 +373,7 @@ def install(config):
         "Umask": 0o077,
         "StandardOutPath": str(PRIVATE / "launch" / "supervisor.log"),
         "StandardErrorPath": str(PRIVATE / "launch" / "supervisor-error.log"),
-        "EnvironmentVariables": {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "AFSER_PRIVATE_DIR": str(PRIVATE)},
+        "EnvironmentVariables": {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "AFSER_PRIVATE_DIR": str(PRIVATE), "AFSER_SUPERVISOR_MODE": "launch-agent"},
     }
     fd = os.open(plist_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as stream:
@@ -351,7 +424,7 @@ def start(restart=False):
 
 def status():
     data = read_config(STATE, {})
-    keys = ("running", "mode", "website", "inviteReady", "invitePath", "updatedAt", "error")
+    keys = ("running", "mode", "hostingMode", "website", "inviteReady", "invitePath", "updatedAt", "error")
     summary = {key: data[key] for key in keys if key in data}
     pid = data.get("supervisorPid")
     if pid:
@@ -373,6 +446,9 @@ def main():
         choice = sub.add_parser(action, help="configure without launching" if action == "prepare" else "configure and start a persistent private LaunchAgent")
         choice.add_argument("--website", default=WEBSITE)
     sub.add_parser("run", help="run the previously prepared supervisor in the foreground")
+    sub.add_parser("background", help="start a prepared supervisor as a child of this authorized session; no login persistence")
+    sub.add_parser("stop-background", help="gracefully stop this project's recorded current-session supervisor")
+    sub.add_parser("restart-background", help="gracefully stop and restart this project's current-session supervisor")
     sub.add_parser("status", help="show only sanitized supervisor metadata")
     sub.add_parser("start", help="restart the project's stopped LaunchAgent without replacing it")
     sub.add_parser("restart", help="restart the project's LaunchAgent and refresh its temporary invite")
@@ -388,6 +464,13 @@ def main():
             stop(uninstall=args.command == "uninstall")
         elif args.command in {"start", "restart"}:
             start(restart=args.command == "restart")
+        elif args.command == "background":
+            background()
+        elif args.command == "stop-background":
+            stop_background()
+        elif args.command == "restart-background":
+            stop_background()
+            background()
         elif args.command in {"prepare", "install"}:
             config = prepare(args.website)
             if args.command == "install":
