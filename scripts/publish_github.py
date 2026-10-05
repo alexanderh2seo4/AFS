@@ -329,7 +329,7 @@ def audit_public_data(root):
             continue
         if len(relative.parts)!=2 or relative.parts[0]!='chapters' or not re.fullmatch(r'[A-Za-z0-9_-]+',path.stem) or set(data)!={'chapter','updatedAt','records','generation'} or data['generation']!=manifest['generation']:
             raise PublishError('Unexpected public map dataset path or fields.')
-        if set(data['records'])!={'sending','awayees','hostees','families'}:raise PublishError('Unexpected public map category.')
+        if set(data['records']) not in ({'sending','awayees','hostees','families'}, {'sending','hopees','hostees','families'}):raise PublishError('Unexpected public map category.')
         for kind, records in data['records'].items():
             for record in records:
                 if set(record)-fields or record.get('kind')!=kind or not re.fullmatch(r'[0-9a-f]{20}',record.get('id','')):
@@ -345,7 +345,7 @@ def audit_public_data(root):
                         valid=False
                     if not valid:raise PublishError('Invalid public pickup date.')
                 location=record.get('location')
-                if location and (set(location)-{'lat','lon','radiusKm','scope'} or location.get('radiusKm')!=(0 if kind=='awayees' else 1)):
+                if location and (set(location)-{'lat','lon','radiusKm','scope'} or location.get('radiusKm')!=(0 if kind in {'awayees', 'hopees'} else 1)):
                     raise PublishError('Unapproved public location fields or radius.')
     if archive_paths!=set(returnees['archiveMonths']) or 'returnees.xlsx' not in {path.relative_to(root).as_posix() for path in root.rglob('*.xlsx')}:
         raise PublishError('The public returnee workbooks do not match the archive index.')
