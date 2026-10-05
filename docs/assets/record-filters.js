@@ -7,7 +7,7 @@ export function pickedRecently(record,now=new Date()){
   return Number.isFinite(picked)&&age>=0&&age<=RECENT_PICK_DAYS*24*60*60*1000;
 }
 export function visibleRecords(records,kind,mode,now=new Date()){
-  if(kind==='hopees')return records.filter(r=>mode==='all'||r.status===(mode==='pending'?'pending':'active'));
+  if(kind==='awayees')return records.filter(r=>mode==='all'||r.status===(mode==='pending'?'pending':'active'));
   if(kind==='sending')return records.filter(r=>mode==='open'?hasOpenInterview(r):mode==='recent'?pickedRecently(r,now):mode==='assigned'?r.status==='assigned':true);
   return records;
 }

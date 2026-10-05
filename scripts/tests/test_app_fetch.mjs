@@ -12,7 +12,7 @@ const t1='2026-10-05T05:00:00Z',t2='2026-10-05T06:00:00Z';
 const manifest=(time=t1)=>({version:1,updatedAt:time,chapters:[{id:'MUC',name:'München'},{id:'FRE',name:'Freiburg'}],defaultChapterId:'MUC'});
 const sendingRecord=id=>({id:(id==='MUC'?'a':'b').repeat(20),kind:'sending',chapterId:id,status:'open',urgent:true,city:'Fixture',sourceUrl:'https://www.afser.de/ereignis-liste/avtproject/42.html'});
 const hosteeRecord={id:'c'.repeat(20),kind:'hostees',chapterId:'FRE',status:'active',sourceUrl:'https://www.afser.de/fixture'};
-const chapter=(id='MUC',time=t1)=>({chapter:id,updatedAt:time,records:{sending:id==='all'?['MUC','FRE'].map(sendingRecord):[sendingRecord(id)],hopees:[],hostees:id==='all'||id==='FRE'?[hosteeRecord]:[],families:[]}});
+const chapter=(id='MUC',time=t1)=>({chapter:id,updatedAt:time,records:{sending:id==='all'?['MUC','FRE'].map(sendingRecord):[sendingRecord(id)],awayees:[],hostees:id==='all'||id==='FRE'?[hosteeRecord]:[],families:[]}});
 const chapterForURL=(url,time=t1)=>chapter(String(url).includes('/all.json')?'all':String(url).includes('/FRE.json')?'FRE':'MUC',time);
 
 const response=data=>new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
