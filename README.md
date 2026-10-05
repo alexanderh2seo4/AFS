@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/afs-flag.svg" alt="AFS Flagge" width="160">
+</p>
+
 # AFS Karte
 
 Public anonymous volunteer maps on GitHub Pages, with a separate private local AFSer importer and MCP server.
