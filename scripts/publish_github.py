@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish code-only repositories and GitHub Pages without displaying credentials.
+"""Publish code and explicitly approved anonymous maps without credentials.
 
 Status is read-only. Every mutation requires an explicit command. Personal data,
 access files, logs, binaries and invites must remain in ignored local storage.
@@ -8,6 +8,7 @@ access files, logs, binaries and invites must remain in ignored local storage.
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -163,7 +164,38 @@ def audit_tracked(directory, mcp=False):
             blocked.append(filename)
     if blocked:
         raise PublishError("Refusing to publish private or unexpected tracked paths: " + ", ".join(blocked))
+    if not mcp and (directory / 'docs/data').exists():
+        audit_public_data(directory / 'docs/data')
     return len(files)
+
+
+def audit_public_data(root):
+    fields={'id','kind','chapterId','status','urgent','deadline','country','sourceUrl','city','location'}
+    manifest=json.loads((root/'manifest.json').read_text())
+    if set(manifest) != {'version','updatedAt','chapters','counts','defaultChapterId','defaultResidence','privacy','generation'} or manifest['version'] != 1 or not re.fullmatch(r'[a-f0-9]{64}',manifest.get('generation','')):
+        raise PublishError('The public map manifest failed its field audit.')
+    for path in root.rglob('*'):
+        if path.is_dir():continue
+        relative=path.relative_to(root)
+        if path.is_symlink() or path.suffix!='.json':raise PublishError('Unexpected public map file.')
+        data=json.loads(path.read_text())
+        if relative.as_posix()=='manifest.json':continue
+        if relative.as_posix()=='places.json':
+            if set(data)!={'places','generation'} or data['generation']!=manifest['generation'] or any(not isinstance(row,list) or len(row)!=6 for row in data['places']):
+                raise PublishError('The public locality file failed its field audit.')
+            continue
+        if len(relative.parts)!=2 or relative.parts[0]!='chapters' or not re.fullmatch(r'[A-Za-z0-9_-]+',path.stem) or set(data)!={'chapter','updatedAt','records','generation'} or data['generation']!=manifest['generation']:
+            raise PublishError('Unexpected public map dataset path or fields.')
+        if set(data['records'])!={'sending','hopees','hostees','families'}:raise PublishError('Unexpected public map category.')
+        for kind, records in data['records'].items():
+            for record in records:
+                if set(record)-fields or record.get('kind')!=kind or not re.fullmatch(r'[0-9a-f]{20}',record.get('id','')):
+                    raise PublishError('Unapproved field in public map record.')
+                if not record.get('sourceUrl','').startswith('https://www.afser.de/'):
+                    raise PublishError('Unapproved public source URL.')
+                location=record.get('location')
+                if location and (set(location)-{'lat','lon','radiusKm','scope'} or location.get('radiusKm')!=(0 if kind=='hopees' else 1)):
+                    raise PublishError('Unapproved public location fields or radius.')
 
 
 def push(directory, repo, branch, mcp=False):

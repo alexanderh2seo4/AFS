@@ -1,75 +1,72 @@
 # AFS Karte
 
-Private volunteer maps for AFSer.de, with public code hosted on GitHub Pages.
+Public anonymous volunteer maps on GitHub Pages, with a separate private local AFSer importer and MCP server.
 
-- `/sending/`: open Sending homeinterviews with urgent highlighting, nearby suggestions, an approximate area and the real AFSer task page for signing up.
-- `/hopees/`: active outgoing participants, grouped by destination country, with source links. No foreign home addresses.
-- `/hostees/`: active hosted students, shown around their public postal locality.
-- `/families/`: active host families and open Hosting homeinterviews.
+- `/sending/`: active open Sending homeinterviews, urgent highlighting, nearby suggestions and the verified AFSer project page for signing up.
+- `/hopees/`: relevant active outgoing participants, grouped by destination country.
+- `/hostees/`: active hosted students, with approximate location areas and source links.
+- `/families/`: active host families and Hosting homeinterviews.
 
-Visitors first choose a city/postcode or their chapter. The browser requests only that chapter's records. The chapter switcher and **Alle Komitees** explicitly change the scope. The same preference applies to all four pages.
+München loads by default, without a login or a location dialog. Visitors can change their residence, select a chapter, or explicitly select **Alle Komitees**. Only the selected chapter file is fetched by default. Residence preferences remain in the browser. The default distance reference is Munich's public city centroid, not a visitor's detected location.
 
-## Hosting and private data
+## Public data and private source
 
-The `docs/` directory is the complete public GitHub Pages deployment. It contains code and map-library assets only. Its real route directories work when opened directly or refreshed.
+`docs/data/` deliberately contains the approved anonymous static projection: opaque IDs, chapter, public city/country labels, status, urgency, deadline, approximate coordinates and AFSer links. It contains no names, contact details, household addresses, source payloads, login credentials or access tokens. Every home location displays a **1 km radius** circle around a stable randomly shifted public postal-area centroid. This is not a confirmed home address or a claim that the household lies inside that circle. Hopees show country points only. Unknown locations are never guessed; unassigned open interviews appear in the All list without a map point.
 
-The separately versioned MCP service lives locally in `mcp/`. Its code repository is separate from this website. The full authenticated source payloads, cookies, private access codes, local geodata caches and SQLite dataset remain in the ignored `.private-data/` directory. Private files use owner-only permissions. Never add either directory to this website repository.
+The complete source responses and SQLite dataset remain only in the ignored local `.private-data/` directory with owner-only permissions. The separate `mcp/` code repository contains the importer, MCP tools and audited public export command. Raw source payloads have no HTTP or MCP read endpoint. AFSer still requires its own login to view details or join interview teams.
 
-GitHub Pages cannot run the data service. A read-only local HTTP bridge serves anonymous projections through an HTTPS tunnel for remote volunteers. The bridge requires expiring bearer access codes; every invitation can be revoked locally. The complete raw dataset has no HTTP or MCP access endpoint. The public website contains neither AFSer credentials nor private invitations.
+GitHub Pages serves both code and anonymous data. Visitors do not need an invitation, a tunnel or this computer online. The previous private tunnel service has been stopped.
 
-The local computer must be awake and online. The supplied Cloudflare Quick Tunnel creates a temporary endpoint, which changes after restart and has no uptime guarantee. A stable production installation requires a named tunnel or an equivalent authenticated private connection. The dataset still stays on this computer.
+Sending source links open verified signup project pages. Hopees, Hostees and family links open verified AFSer lists; AFSer's own saved chapter setting may require selecting the committee there. No unverified individual participant permalink is invented.
 
-## Local use
+## Automatic publication
 
-See `mcp/README.md` for the local data service. With its dependencies installed:
-
-```sh
-cd mcp
-uv run afser-data --data-dir ../.private-data sync
-uv run afser-data --data-dir ../.private-data serve --frontend-dir ../docs
-```
-
-Create an invitation locally, then open the resulting `.private-data/invite.html` file:
+The local updater synchronizes AFSer, validates a complete source snapshot, exports only approved active fields, audits the public files, commits only `docs/data/` and pushes GitHub Pages. It runs every **30 minutes** while this computer's current session is running. A source failure preserves the previous published snapshot. GitHub continues serving that snapshot while this computer is offline; a notice appears if it is more than 24 hours old.
 
 ```sh
-uv run afser-data --data-dir ../.private-data invite \
-  --website http://127.0.0.1:8765 \
-  --endpoint http://127.0.0.1:8765 \
-  --label owner
+python3 scripts/update_public.py background
+python3 scripts/update_public.py status
+python3 scripts/update_public.py stop
 ```
 
-The invite carries the access code in the URL fragment, which is removed immediately after the website reads it. It is not sent to GitHub in an HTTP request or included in an AFSer source link. The browser keeps the code only for its current session; records are not stored by the website.
-
-For remote service preparation/start/status, use `scripts/start_remote.py --help`. The current installation runs from the authorized desktop session:
+After reboot/login, start the updater again from an authorized terminal or Codex session. macOS blocked the old LaunchAgent's Documents access; no privacy settings were weakened. To synchronize and publish immediately:
 
 ```sh
-python3 scripts/start_remote.py background
-python3 scripts/start_remote.py status
+python3 scripts/update_public.py sync-and-publish
 ```
 
-Use `stop-background` or `restart-background` for this session service. It supervises the bridge and tunnel, but does not restart after logging in or rebooting. macOS blocked the generated LaunchAgent's access to this Documents folder; start-at-login installation needs that runtime's Documents permission first. The failed LaunchAgent was removed.
+To publish an already complete local snapshot without reading AFSer again:
 
-Open the private invite locally to retrieve the latest volunteer link; do not paste it into public issues or repository files. Use `afser-data revoke-all` to invalidate access.
+```sh
+python3 scripts/update_public.py once
+```
 
-## Source updates and coverage
+## Source coverage
 
-The importer uses AFSer's authenticated read-only APIs and the actual interview task board. It checks complete list responses, follows board pagination, partitions capped student lists by chapter and source status/year, and verifies interview signup availability. It retains original source payloads locally and prints only counts and safe error codes. All active, cancelled and historical source fields returned by supported endpoints are retained in raw storage; only current relevant records enter the maps. Open interviews with no confirmed chapter or location remain visible as **Komitee noch offen** in the explicit All view, without an invented map point.
+The importer uses AFSer's authenticated read-only APIs and the interview task board. It checks list completeness, follows all board pages, partitions capped student lists by chapter and source status/year, and verifies open interview roles. The nationwide student list is covered in full. All source fields returned by supported endpoints remain local; only relevant active records enter the public map.
 
-Automatic updates run every 30 minutes while the local service runs. A sync activates atomically only after all required sources validate. If AFSer authentication expires or source structure changes, the previous complete snapshot remains available. Optional unsupported historical API pagination is reported separately in the local coverage manifest, rather than presented as complete.
-
-AFSer's own login and permissions apply to every linked source page. The map does not register a volunteer for an interview automatically. It opens the actual task page where they can join the interview team.
+The optional historical interview API returns only 2,000 of 4,489 records and exposes no usable pagination. This limitation is recorded in the local coverage manifest; it does not limit the fully traversed actionable interview board.
 
 ## Development
 
-No npm install or application build is needed. Rebuild the four static route files after editing `docs/index.html`:
+The location finder includes every distinct postal/locality row from the GeoNames Germany download: 23,297 entries across 10,813 postcodes in the current index. Shared postcodes retain all town names; county labels and confirmed chapter mappings distinguish repeated names. Search accepts German umlauts, transliterations, Munich's English name, and postcode prefixes. Selecting a postcode uses that postal area's coordinates. Searches run in the browser without sending the entered location to a geocoding provider.
+
+Refresh the public geography index and run its search checks with:
+
+```sh
+python3 scripts/build_locations.py
+node scripts/test_locations.mjs
+```
+
+No npm build is required. After changing `docs/index.html`, rebuild its four route wrappers:
 
 ```sh
 python3 scripts/build_pages.py
 python3 -m http.server 5173 --bind 127.0.0.1 --directory docs
 ```
 
-The private backend has automated tests for source normalization, record privacy, active/chapter filtering, pagination, atomic sync, authentication, CORS, and MCP tools. Browser verification should use isolated synthetic data, not expose national raw data to a model.
+Backend tests cover public field leakage, active/chapter filtering, randomized locations, source coverage, atomic snapshots, authentication and actual MCP stdio. Public file audits reject unknown fields and wrong home-circle radii before publishing.
 
 ## Attribution
 
-Leaflet 1.9.4 (BSD-2-Clause) is vendored with its license. Interactive raster tiles use OpenStreetMap with visible contributor attribution and origin-only referrers. Public Germany postcode centroids use GeoNames (CC BY 4.0); country centroids use Natural Earth (public domain). Private household addresses are never sent to a geocoding provider.
+Leaflet 1.9.4 is vendored with its BSD-2-Clause license. OpenStreetMap tiles include visible contributor attribution and origin-only referrers. Public Germany postcode centroids use GeoNames (CC BY 4.0); country points use Natural Earth (public domain). Private household addresses are never sent to a geocoding provider.
