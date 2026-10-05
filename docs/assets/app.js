@@ -11,7 +11,7 @@ const routes = {
   families: {eyebrow:'HOSTING · GASTFAMILIEN', title:'Austausch beginnt zu Hause.',description:'Aktive Gastfamilien und offene Hosting-Homeinterviews in deinem Komitee.',unit:'aktive Gastfamilien',list:'Gastfamilien'}
 };
 const storage = {get(k,session=false){try{return (session?sessionStorage:localStorage).getItem(k)}catch{return null}},set(k,v,session=false){try{(session?sessionStorage:localStorage).setItem(k,v)}catch{}},remove(k,session=false){try{(session?sessionStorage:localStorage).removeItem(k)}catch{}}};
-const state = {kind:routeFromPath(),chapters:[],records:[],chapter:'',residence:null,selectedPlace:null,updatedAt:null,request:0,placeRequest:0,connected:false,markers:new Map(),chapterData:new Map(),manifest:null,placeRows:null};
+const state = {kind:routeFromPath(),chapters:[],records:[],chapter:'',residence:null,selectedPlace:null,updatedAt:null,request:0,placeRequest:0,connected:false,markers:new Map(),chapterData:new Map(),availableChapters:null,manifest:null,placeRows:null};
 try {const saved=JSON.parse(storage.get('afs-public-residence')||'null');if(saved&&typeof saved==='object'&&(typeof saved.city==='string'||typeof saved.chapterId==='string'))state.residence=saved}catch{}
 state.residence||=structuredClone(DEFAULT_RESIDENCE);state.chapter=storage.get('afs-public-chapter')||state.residence.chapterId||'';
 function routeFromPath(){return location.pathname.split('/').filter(Boolean).findLast(part=>Object.hasOwn(routes,part))||'sending'}
@@ -34,10 +34,36 @@ const mapResizeObserver=new ResizeObserver(entries=>{
 });
 mapResizeObserver.observe($('map-panel'));
 function initMap(){if(!globalThis.L){$('map').append(element('p','empty-state','Die Kartenbibliothek konnte nicht geladen werden. Die Liste bleibt verfügbar.'));return}map=L.map('map',{scrollWheelZoom:true,zoomControl:true,maxZoom:13,minZoom:2}).setView([state.residence?.location?.lat||48.1374,state.residence?.location?.lon||11.5755],8);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,referrerPolicy:'strict-origin-when-cross-origin',attribution:'© <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">OpenStreetMap</a>'}).addTo(map);layer=L.layerGroup().addTo(map);map.on('popupclose',()=>document.querySelectorAll('.record-card.selected').forEach(e=>e.classList.remove('selected')))}
-function setRoute(kind,push=false){state.kind=Object.hasOwn(routes,kind)?kind:'sending';const r=routes[state.kind];document.title='AFS Karte · '+(state.kind==='families'?'Gastfamilien':state.kind.charAt(0).toUpperCase()+state.kind.slice(1));$('eyebrow').textContent=r.eyebrow;$('page-title').textContent=r.title;$('page-description').textContent=r.description;$('record-unit').textContent=r.unit;$('list-heading').textContent=r.list;$('urgent-control').hidden=state.kind!=='sending'&&state.kind!=='families';$('urgent-only').checked=false;$('map-top-note').textContent=state.kind==='hopees'?'Nur Gastländer, keine Wohnadressen':'Standorte als ungefähre Bereiche';$('map-legend').hidden=state.kind==='hopees';$('sort-select').hidden=state.kind==='hopees';document.querySelectorAll('[data-route]').forEach(a=>{a.href=new URL(a.dataset.route+'/',root);a.classList.toggle('active',a.dataset.route===state.kind);if(a.dataset.route===state.kind)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});if(push)history.pushState({},'',new URL(state.kind+'/',root));clearRecords();if(state.connected&&state.chapter)loadRecords()}
+function setRoute(kind,push=false){state.kind=Object.hasOwn(routes,kind)?kind:'sending';const r=routes[state.kind];document.title='AFS Karte · '+(state.kind==='families'?'Gastfamilien':state.kind.charAt(0).toUpperCase()+state.kind.slice(1));$('eyebrow').textContent=r.eyebrow;$('page-title').textContent=r.title;$('page-description').textContent=r.description;$('record-unit').textContent=r.unit;$('list-heading').textContent=r.list;$('urgent-control').hidden=state.kind!=='sending'&&state.kind!=='families';$('urgent-only').checked=false;$('map-top-note').textContent=state.kind==='hopees'?'Nur Gastländer, keine Wohnadressen':'Standorte als ungefähre Bereiche';$('map-legend').hidden=state.kind==='hopees';$('sort-select').hidden=state.kind==='hopees';document.querySelectorAll('[data-route]').forEach(a=>{a.href=new URL(a.dataset.route+'/',root);a.classList.toggle('active',a.dataset.route===state.kind);if(a.dataset.route===state.kind)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});if(push)history.pushState({},'',new URL(state.kind+'/',root));populateChapters();clearRecords();if(state.connected&&state.chapter)loadRecords()}
 function clearRecords(){recordRequests.cancel();state.request++;state.recordsScope=null;state.updatedAt=null;state.fetchError='';$('updated-label').textContent='';$('data-notice').hidden=true;map?.closePopup();state.records=[];state.markers.clear();layer?.clearLayers();$('record-count').textContent='–';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren();$('refresh-button').disabled=!state.connected||!state.chapter;if(!state.connected)renderEmpty('Öffentlicher Datenstand','Die anonymisierten Kartendaten werden von GitHub geladen.');else if(!state.chapter)renderEmpty('Welches Komitee?','Wähle deinen Wohnort oder dein Komitee, um die passenden Einträge zu sehen.');}
 function renderEmpty(title,copy){const box=element('div','empty-state');box.append(element('div','empty-icon','⌖'),element('h3','',title),element('p','',copy));const btn=element('button','primary',state.chapter?'Aktualisieren':'Wohnort oder Komitee wählen');btn.onclick=!state.connected?loadPublic:!state.chapter?openResidence:reloadPublic;box.append(btn);$('results-list').replaceChildren(box)}
-function populateChapters(){const options=[element('option','','Bitte auswählen'),...state.chapters.map(c=>{const o=element('option','',c.name);o.value=c.id;return o})];options[0].value='';const all=element('option','','Alle verfügbaren · Deutschland');all.value='all';$('chapter-select').replaceChildren(options[0],all,...options.slice(1));$('chapter-select').disabled=!state.connected;$('residence-chapter').replaceChildren(...options.map(o=>o.cloneNode(true)));$('residence-chapter').disabled=!state.connected;$('residence-chapter').value=state.residence?.chapterId||'';$('chapter-select').value=state.chapter;if(state.chapter&&$('chapter-select').value!==state.chapter)state.chapter='';updateScope()}
+function populateChapters(){
+  const makeOption=chapter=>{const option=element('option','',chapter.name);option.value=chapter.id;return option};
+  const available=state.availableChapters?.[state.kind];
+  const visible=state.chapters.filter(chapter=>available?.includes(chapter.id));
+  const placeholder=element('option','','Bitte auswählen');placeholder.value='';
+  const all=element('option','','Alle verfügbaren · Deutschland');all.value='all';
+  $('chapter-select').replaceChildren(placeholder,all,...visible.map(makeOption));
+  $('chapter-select').disabled=!state.connected;
+  $('residence-chapter').replaceChildren(placeholder.cloneNode(true),...state.chapters.map(makeOption));
+  $('residence-chapter').disabled=!state.connected;$('residence-chapter').value=state.residence?.chapterId||'';
+  if(state.connected&&available&&state.chapter&&state.chapter!=='all'&&!visible.some(chapter=>chapter.id===state.chapter)){
+    state.chapter='all';storage.set('afs-public-chapter','all');
+  }
+  $('chapter-select').value=state.chapter;updateScope();
+}
+async function loadChapterAvailability(signal){
+  let available;
+  try{available=await publicData.availableChapterIds({signal})}
+  catch(error){
+    if(error.code!=='changed'||signal?.aborted)throw error;
+    const data=await request('/api/chapters',{signal});state.chapters=data.chapters;
+    available=await publicData.availableChapterIds({signal});
+  }
+  if(signal?.aborted)return;
+  state.availableChapters=available;
+}
+
 function chapterName(id){return id==='unassigned'?'Komitee noch offen':state.chapters.find(c=>c.id===id)?.name||id||'Komitee noch offen'}
 function updateScope(){$('show-all-button').disabled=!state.connected;$('show-all-button').setAttribute('aria-pressed',String(state.chapter==='all'&&!$('urgent-only').checked&&(!$('record-filter')||$('record-filter-control')?.hidden||$('record-filter').value==='all')));$('scope-note').textContent=state.chapter==='all'?'Alle verfügbaren Einträge aus allen Komitees.':state.chapter?'Nur Einträge aus '+chapterName(state.chapter):'Wähle deinen Wohnort oder dein Komitee.';$('residence-label').textContent=state.residence?.city|| (state.residence?.chapterId?chapterName(state.residence.chapterId):'Wo wohnst du?')}
 async function showAllAvailable(){
@@ -53,7 +79,7 @@ async function loadPublic(){
   const job=bootstrapRequests.begin();$('refresh-button').disabled=true;
   try{
     const data=await request('/api/chapters',{signal:job.signal});if(!bootstrapRequests.isCurrent(job))return;
-    state.chapters=data.chapters;state.connected=true;await restoreResidence();if(!bootstrapRequests.isCurrent(job))return;
+    state.chapters=data.chapters;await loadChapterAvailability(job.signal);if(!bootstrapRequests.isCurrent(job))return;state.connected=true;await restoreResidence();if(!bootstrapRequests.isCurrent(job))return;
     populateChapters();connectionState(true);
     if(state.chapter)await loadRecords();else{clearRecords();openResidence()}
   }catch(e){if(!bootstrapRequests.isCurrent(job)||e.name==='AbortError')return;state.connected=false;clearRecords();populateChapters();renderEmpty('Datenstand nicht erreichbar',e.message);fetchFailed(e,false)}
@@ -64,7 +90,7 @@ async function reloadPublic(){
   const job=bootstrapRequests.begin();recordRequests.cancel();state.request++;$('refresh-button').disabled=true;
   try{
     const data=await request('/api/chapters',{signal:job.signal});if(!bootstrapRequests.isCurrent(job))return;
-    state.chapters=data.chapters;populateChapters();
+    state.chapters=data.chapters;await loadChapterAvailability(job.signal);if(!bootstrapRequests.isCurrent(job))return;populateChapters();
     if(state.chapter)await loadRecords();else{clearRecords();openResidence()}
   }catch(e){if(!bootstrapRequests.isCurrent(job)||e.name==='AbortError')return;fetchFailed(e,!!state.updatedAt);if(!state.updatedAt){renderEmpty('Datenstand nicht erreichbar',e.message);$('record-count').textContent='–'}}
   finally{if(bootstrapRequests.isCurrent(job))$('refresh-button').disabled=!state.connected||!state.chapter}
@@ -84,7 +110,7 @@ async function loadRecords(){
       if(e.code!=='changed'||!current())throw e;
       // A deployment can briefly serve its old manifest with new chapter files.
       const fresh=await request('/api/chapters',{signal:job.signal});if(!current())return;
-      state.chapters=fresh.chapters;populateChapters();if(!current()){if(recordRequests.isCurrent(job)&&state.chapter!==chapter){clearRecords();openResidence()}return;}
+      state.chapters=fresh.chapters;await loadChapterAvailability(job.signal);if(!current())return;populateChapters();if(!current()){if(recordRequests.isCurrent(job)&&state.chapter!==chapter){clearRecords();openResidence()}return;}
       data=await request(path,{signal:job.signal});
     }
     if(!current())return;

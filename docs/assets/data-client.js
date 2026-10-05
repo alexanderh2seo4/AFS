@@ -102,6 +102,13 @@ export function publicDataStore(base, options = {}) {
       cache.set(chapter, data);
       return {records:data.records[kind], updatedAt:data.updatedAt, kind, chapter};
     },
+    async availableChapterIds({signal} = {}) {
+      const capturedEpoch = epoch;
+      await this.records('sending', 'all', {signal});
+      if (capturedEpoch !== epoch || signal?.aborted) throw abortError();
+      const data = chapterCache.get('all');
+      return Object.fromEntries(KINDS.map(kind => [kind, [...new Set(data.records[kind].map(record => record.chapterId))]]));
+    },
     async places({signal} = {}) {
       if (!manifest) throw new DataError('invalid');
       const capturedEpoch = epoch, version = manifest;

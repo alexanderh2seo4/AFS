@@ -7,7 +7,7 @@ Public anonymous volunteer maps on GitHub Pages, with a separate private local A
 - `/hostees/`: active hosted students, with approximate location areas and source links.
 - `/families/`: active host families and Hosting homeinterviews.
 
-München loads by default, without a login or a location dialog. Visitors can change their residence, select a chapter, or choose **Alle verfügbaren anzeigen** to see all available records across committees. This also clears the urgency filter; the selected scope is remembered in the browser. Only the selected chapter file is fetched by default. Residence preferences remain in the browser. The default distance reference is Munich's public city centroid, not a visitor's detected location.
+München loads by default, without a login or a location dialog. Visitors can change their residence, select a chapter, or choose **Alle verfügbaren anzeigen** to see all available records across committees. This also clears the urgency filter; the selected scope is remembered in the browser. The committee picker lists only committees with available data in the current section. A single validated aggregate supplies this availability list and is reused for the all-available view; individual committee files are loaded when selected. Residence preferences remain in the browser. The default distance reference is Munich's public city centroid, not a visitor's detected location.
 
 ## Public data and private source
 

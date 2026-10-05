@@ -22,7 +22,6 @@
     </section>
     <section class="toolbar" aria-label="Karte filtern">
       <label class="chapter-picker"><span>Komitee</span><select id="chapter-select" disabled><option value="">Bitte auswählen</option></select></label>
-      <button id="show-all-button" class="show-all-button" type="button" aria-pressed="false" disabled>Alle verfügbaren anzeigen</button>
       <div class="scope-note" id="scope-note">Wähle deinen Wohnort oder dein Komitee.</div>
       <label class="urgent-filter" id="urgent-control"><input id="urgent-only" type="checkbox">Nur dringend</label>
       <button id="refresh-button" class="subtle-button" disabled aria-label="Daten aktualisieren">↻ <span>Aktualisieren</span></button>
@@ -43,6 +42,7 @@
       <section class="map-panel" id="map-panel" aria-label="Interaktive Karte"><div id="map"></div><div class="map-top-note" id="map-top-note">Standorte als ungefähre Bereiche</div><button id="fit-map" class="map-fit" aria-label="Alle gefilterten Einträge auf der Karte anzeigen">Ausschnitt anpassen</button><div class="map-legend" id="map-legend"><span><i class="legend-dot regular"></i>Offen</span><span><i class="legend-dot urgent"></i>Dringend</span><span class="area-legend"><i></i>Ungefährer Bereich</span></div></section>
     </section>
     <p class="privacy-note">Keine Namen oder Hausadressen auf der Karte. Alle Details und die Anmeldung findest du nach dem Login auf AFSer.de. <button id="privacy-button">Datenschutz & Quellen</button></p>
+    <div class="scope-actions"><button id="show-all-button" class="show-all-button" type="button" aria-pressed="false" disabled>Alle verfügbaren anzeigen</button></div>
   </main>
   <dialog id="residence-dialog" aria-labelledby="residence-title">
     <form id="residence-form"><button type="button" class="dialog-close" data-close aria-label="Schließen">×</button><p class="eyebrow">DEIN KOMITEE</p><h2 id="residence-title">Wo wohnst du?</h2><p>Dein Ort hilft uns, das passende Komitee und die nächsten Interviews zu finden. Eine Stadt oder Postleitzahl genügt.</p><label for="city-input">Stadt oder Postleitzahl</label><input id="city-input" autocomplete="off" placeholder="z. B. München oder 80331" maxlength="80"><div id="city-options" class="city-options" aria-live="polite"></div><div class="divider">oder Komitee direkt auswählen</div><label for="residence-chapter">Dein Komitee</label><select id="residence-chapter"><option value="">Bitte auswählen</option></select><p class="form-message" id="residence-message" role="status"></p><button class="primary wide" type="submit">Mein Komitee anzeigen</button><p class="small-note">Dein Wohnort bleibt in diesem Browser. Wir fragen keine genaue Adresse ab.</p></form>

@@ -62,3 +62,12 @@ test('geography must match the published generation and contain valid chapter co
     await store.refresh();await assert.rejects(store.places(),DataError);
   }
 });
+
+test('committee availability comes from validated records per section and reuses the aggregate',async()=>{
+  const all={...chapter(t1,'all'),records:{sending:[record('MUC'),{...record('FRE'),id:'b'.repeat(20)},{...record('unassigned'),id:'c'.repeat(20)}],hopees:[],hostees:[{...record('FRE'),id:'d'.repeat(20),kind:'hostees'}],families:[]}};
+  const reads=[];const store=publicDataStore('https://example.invalid/AFS/',{fetchImpl:async url=>{reads.push(String(url));return response(String(url).includes('manifest')?manifest(t1):all)}});
+  await store.refresh();
+  assert.deepEqual(await store.availableChapterIds(),{sending:['MUC','FRE','unassigned'],hopees:[],hostees:['FRE'],families:[]});
+  await store.availableChapterIds();await store.records('sending','all');
+  assert.equal(reads.filter(url=>url.includes('/chapters/')).length,1);
+});
