@@ -1,8 +1,9 @@
-import {publicDataStore} from './data-client.js';
+import {latestRequest,publicDataStore} from './data-client.js';
 import {DEFAULT_RESIDENCE,findPublicPlaces,searchKey} from './locations.js';
 const $ = id => document.getElementById(id);
 const root = new URL('../', import.meta.url);
 const publicData=publicDataStore(root);
+const recordRequests=latestRequest(),bootstrapRequests=latestRequest();
 const routes = {
   sending: {eyebrow:'SENDING · HOMEINTERVIEWS', title:'Ein Gespräch. Ein Anfang.',description:'Finde offene Homeinterviews in deiner Nähe und melde dich direkt auf AFSer an.',unit:'offene Interviews',list:'Offene Interviews'},
   hopees: {eyebrow:'SENDING · HOPEES & AWAYEES', title:'Dein Komitee. In der Welt.',description:'Sieh, in welche Länder eure Hopees reisen und wo eure Awayees gerade sind.',unit:'aktive Teilnehmende',list:'Hopees & Awayees'},
@@ -18,7 +19,7 @@ function element(tag,cls,text){const e=document.createElement(tag);if(cls)e.clas
 function showDialog(id){document.querySelectorAll('dialog[open]').forEach(d=>d.close());$(id).showModal()}
 function toast(text){$('toast').textContent=text;$('toast').hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').hidden=true,5000)}
 function sourceLink(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='www.afser.de'&&!u.username&&!u.password?u.href:null}catch{return null}}
-async function request(path){const u=new URL(path,'https://local.invalid');if(u.pathname==='/api/chapters'){state.manifest=await publicData.refresh();return {chapters:state.manifest.chapters}}if(u.pathname==='/api/status')return state.manifest;if(u.pathname==='/api/records')return publicData.records(u.searchParams.get('kind'),u.searchParams.get('chapter'));if(u.pathname==='/api/places'){state.placeRows=await publicData.places();return {places:await findPublicPlaces(u.searchParams.get('q')||'',state.placeRows)}}throw Error('Unbekannte Datenabfrage.')}
+async function request(path,{signal}={}){const u=new URL(path,'https://local.invalid');if(u.pathname==='/api/chapters'){state.manifest=await publicData.refresh({signal});return {chapters:state.manifest.chapters}}if(u.pathname==='/api/status')return state.manifest;if(u.pathname==='/api/records')return publicData.records(u.searchParams.get('kind'),u.searchParams.get('chapter'),{signal});if(u.pathname==='/api/places'){state.placeRows=await publicData.places({signal});return {places:await findPublicPlaces(u.searchParams.get('q')||'',state.placeRows)}}throw Error('Unbekannte Datenabfrage.')}
 let map,layer;
 const mobileLayout=matchMedia('(max-width:760px)');
 function setMobileView(view){
@@ -34,15 +35,57 @@ const mapResizeObserver=new ResizeObserver(entries=>{
 mapResizeObserver.observe($('map-panel'));
 function initMap(){if(!globalThis.L){$('map').append(element('p','empty-state','Die Kartenbibliothek konnte nicht geladen werden. Die Liste bleibt verfügbar.'));return}map=L.map('map',{scrollWheelZoom:true,zoomControl:true,maxZoom:13,minZoom:2}).setView([state.residence?.location?.lat||48.1374,state.residence?.location?.lon||11.5755],8);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,referrerPolicy:'strict-origin-when-cross-origin',attribution:'© <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">OpenStreetMap</a>'}).addTo(map);layer=L.layerGroup().addTo(map);map.on('popupclose',()=>document.querySelectorAll('.record-card.selected').forEach(e=>e.classList.remove('selected')))}
 function setRoute(kind,push=false){state.kind=Object.hasOwn(routes,kind)?kind:'sending';const r=routes[state.kind];document.title='AFS Karte · '+(state.kind==='families'?'Gastfamilien':state.kind.charAt(0).toUpperCase()+state.kind.slice(1));$('eyebrow').textContent=r.eyebrow;$('page-title').textContent=r.title;$('page-description').textContent=r.description;$('record-unit').textContent=r.unit;$('list-heading').textContent=r.list;$('urgent-control').hidden=state.kind!=='sending'&&state.kind!=='families';$('urgent-only').checked=false;$('map-top-note').textContent=state.kind==='hopees'?'Nur Gastländer, keine Wohnadressen':'Standorte als ungefähre Bereiche';$('map-legend').hidden=state.kind==='hopees';$('sort-select').hidden=state.kind==='hopees';document.querySelectorAll('[data-route]').forEach(a=>{a.href=new URL(a.dataset.route+'/',root);a.classList.toggle('active',a.dataset.route===state.kind);if(a.dataset.route===state.kind)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});if(push)history.pushState({},'',new URL(state.kind+'/',root));clearRecords();if(state.connected&&state.chapter)loadRecords()}
-function clearRecords(){$('data-notice').hidden=true;map?.closePopup();state.records=[];state.request++;state.markers.clear();layer?.clearLayers();$('record-count').textContent='–';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren();if(!state.connected)renderEmpty('Öffentlicher Datenstand','Die anonymisierten Kartendaten werden von GitHub geladen.');else if(!state.chapter)renderEmpty('Welches Komitee?','Wähle deinen Wohnort oder dein Komitee, um die passenden Einträge zu sehen.');}
+function clearRecords(){recordRequests.cancel();state.request++;state.recordsScope=null;state.updatedAt=null;state.fetchError='';$('updated-label').textContent='';$('data-notice').hidden=true;map?.closePopup();state.records=[];state.markers.clear();layer?.clearLayers();$('record-count').textContent='–';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren();$('refresh-button').disabled=!state.connected||!state.chapter;if(!state.connected)renderEmpty('Öffentlicher Datenstand','Die anonymisierten Kartendaten werden von GitHub geladen.');else if(!state.chapter)renderEmpty('Welches Komitee?','Wähle deinen Wohnort oder dein Komitee, um die passenden Einträge zu sehen.');}
 function renderEmpty(title,copy){const box=element('div','empty-state');box.append(element('div','empty-icon','⌖'),element('h3','',title),element('p','',copy));const btn=element('button','primary',state.chapter?'Aktualisieren':'Wohnort oder Komitee wählen');btn.onclick=!state.connected?loadPublic:!state.chapter?openResidence:reloadPublic;box.append(btn);$('results-list').replaceChildren(box)}
 function populateChapters(){const options=[element('option','','Bitte auswählen'),...state.chapters.map(c=>{const o=element('option','',c.name);o.value=c.id;return o})];options[0].value='';const all=element('option','','Alle Komitees · Deutschland');all.value='all';$('chapter-select').replaceChildren(...options,all);$('chapter-select').disabled=!state.connected;$('residence-chapter').replaceChildren(...options.map(o=>o.cloneNode(true)));$('residence-chapter').disabled=!state.connected;$('residence-chapter').value=state.residence?.chapterId||'';$('chapter-select').value=state.chapter;if(state.chapter&&$('chapter-select').value!==state.chapter)state.chapter='';updateScope()}
 function chapterName(id){return id==='unassigned'?'Komitee noch offen':state.chapters.find(c=>c.id===id)?.name||id||'Komitee noch offen'}
 function updateScope(){$('scope-note').textContent=state.chapter==='all'?'Du siehst ausdrücklich alle Komitees.':state.chapter?'Nur Einträge aus '+chapterName(state.chapter):'Wähle deinen Wohnort oder dein Komitee.';$('residence-label').textContent=state.residence?.city|| (state.residence?.chapterId?chapterName(state.residence.chapterId):'Wo wohnst du?')}
-async function loadPublic(){try{const data=await request('/api/chapters');if(!Array.isArray(data.chapters)||state.manifest.version!==1)throw Error('Ungültiger Datenstand.');state.chapters=data.chapters;state.connected=true;await restoreResidence();populateChapters();$('connection-label').textContent='Öffentliche Karte';$('connection-button').classList.add('connected');$('refresh-button').disabled=false;if(state.chapter)await loadRecords();else{clearRecords();openResidence()}}catch(e){state.connected=false;renderEmpty('Datenstand nicht erreichbar',e.message);$('connection-label').textContent='Datenstand laden'}}
-async function reloadPublic(){state.chapterData.clear();state.placeRows=null;try{const data=await request('/api/chapters');state.chapters=data.chapters;populateChapters();await loadRecords()}catch(e){toast(e.message)}}
-async function refreshStatus(){const time=new Date(state.manifest?.updatedAt),stale=Number.isFinite(time.valueOf())&&Date.now()-time.valueOf()>24*60*60*1000;$('data-notice').hidden=!stale;$('data-notice').textContent='Dieser veröffentlichte Datenstand ist älter als 24 Stunden. Aktuelle Details findest du auf AFSer.';$('sync-info').textContent='Die Website lädt den zuletzt auf GitHub veröffentlichten anonymisierten Datenstand. Der lokale Importer kann aktualisierte Daten veröffentlichen; die Karte bleibt auch ohne ihn erreichbar.';}
-async function loadRecords(){if(!state.connected||!state.chapter)return;const id=++state.request;map?.closePopup();layer?.clearLayers();state.markers.clear();state.records=[];$('record-count').textContent='…';$('nearby-section').hidden=true;$('results-list').replaceChildren(element('div','empty-state','Einträge werden geladen …'));$('refresh-button').disabled=true;try{const d=await request('/api/records?'+new URLSearchParams({kind:state.kind,chapter:state.chapter}));if(id!==state.request)return;state.records=Array.isArray(d.records)?d.records.filter(r=>r.kind===state.kind&&(state.chapter==='all'||r.chapterId===state.chapter)):[];state.updatedAt=d.updatedAt;if(d.updatedAt){render();fitMap()}else{renderEmpty('Der erste Datenstand wird vorbereitet','Es wurde noch kein vollständiger öffentlicher Datenstand veröffentlicht. Bitte später aktualisieren.');$('record-count').textContent='–'}refreshStatus();$('updated-label').textContent=d.updatedAt?'Stand: '+new Intl.DateTimeFormat('de-DE',{dateStyle:'short',timeStyle:'short'}).format(new Date(d.updatedAt)):'Noch kein vollständiger Datenstand';}catch(e){if(id!==state.request)return;renderEmpty('Datenstand nicht erreichbar',e.message);$('record-count').textContent='–';toast('Keine Daten geladen. Bitte später aktualisieren.')}finally{if(id===state.request)$('refresh-button').disabled=false}}
+function connectionState(ok){$('connection-button').classList.toggle('connected',ok);$('connection-label').textContent=ok?'Öffentliche Karte':state.updatedAt?'Zuletzt geladener Stand':'Datenstand laden'}
+function fetchFailed(error,hasPrevious){state.fetchError=(error.message||'Daten konnten nicht geladen werden.')+(hasPrevious?' Du siehst weiterhin den zuletzt erfolgreich geladenen Stand.':'');connectionState(false);refreshStatus()}
+async function loadPublic(){
+  const job=bootstrapRequests.begin();$('refresh-button').disabled=true;
+  try{
+    const data=await request('/api/chapters',{signal:job.signal});if(!bootstrapRequests.isCurrent(job))return;
+    state.chapters=data.chapters;state.connected=true;await restoreResidence();if(!bootstrapRequests.isCurrent(job))return;
+    populateChapters();connectionState(true);
+    if(state.chapter)await loadRecords();else{clearRecords();openResidence()}
+  }catch(e){if(!bootstrapRequests.isCurrent(job)||e.name==='AbortError')return;state.connected=false;clearRecords();populateChapters();renderEmpty('Datenstand nicht erreichbar',e.message);fetchFailed(e,false)}
+  finally{if(bootstrapRequests.isCurrent(job))$('refresh-button').disabled=!state.connected||!state.chapter}
+}
+async function reloadPublic(){
+  if(!state.connected)return loadPublic();
+  const job=bootstrapRequests.begin();recordRequests.cancel();state.request++;$('refresh-button').disabled=true;
+  try{
+    const data=await request('/api/chapters',{signal:job.signal});if(!bootstrapRequests.isCurrent(job))return;
+    state.chapters=data.chapters;populateChapters();
+    if(state.chapter)await loadRecords();else{clearRecords();openResidence()}
+  }catch(e){if(!bootstrapRequests.isCurrent(job)||e.name==='AbortError')return;fetchFailed(e,!!state.updatedAt);if(!state.updatedAt){renderEmpty('Datenstand nicht erreichbar',e.message);$('record-count').textContent='–'}}
+  finally{if(bootstrapRequests.isCurrent(job))$('refresh-button').disabled=!state.connected||!state.chapter}
+}
+function refreshStatus(){const time=new Date(state.manifest?.updatedAt),stale=Number.isFinite(time.valueOf())&&Date.now()-time.valueOf()>24*60*60*1000;$('data-notice').hidden=!state.fetchError&&!stale;$('data-notice').textContent=state.fetchError||'Dieser veröffentlichte Datenstand ist älter als 24 Stunden. Aktuelle Details findest du auf AFSer.';$('sync-info').textContent='Die Website lädt den zuletzt auf GitHub veröffentlichten anonymisierten Datenstand. Der lokale Importer kann aktualisierte Daten veröffentlichen; die Karte bleibt auch ohne ihn erreichbar.';}
+async function loadRecords(){
+  if(!state.connected||!state.chapter)return;
+  const job=recordRequests.begin(),id=++state.request,kind=state.kind,chapter=state.chapter,scope=kind+':'+chapter;
+  const hasPrevious=state.recordsScope===scope&&!!state.updatedAt;
+  const current=()=>id===state.request&&recordRequests.isCurrent(job)&&state.kind===kind&&state.chapter===chapter;
+  if(!hasPrevious){map?.closePopup();layer?.clearLayers();state.markers.clear();state.records=[];state.updatedAt=null;state.recordsScope=null;state.fetchError='';$('updated-label').textContent='';$('data-notice').hidden=true;$('record-count').textContent='…';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren(element('div','empty-state','Einträge werden geladen …'))}
+  $('refresh-button').disabled=true;
+  try{
+    const path='/api/records?'+new URLSearchParams({kind,chapter});let data;
+    try{data=await request(path,{signal:job.signal})}
+    catch(e){
+      if(e.code!=='changed'||!current())throw e;
+      // A deployment can briefly serve its old manifest with new chapter files.
+      const fresh=await request('/api/chapters',{signal:job.signal});if(!current())return;
+      state.chapters=fresh.chapters;populateChapters();if(!current())return;
+      data=await request(path,{signal:job.signal});
+    }
+    if(!current())return;
+    state.records=data.records;state.updatedAt=data.updatedAt;state.recordsScope=scope;state.fetchError='';connectionState(true);render();fitMap();refreshStatus();
+    $('updated-label').textContent='Stand: '+new Intl.DateTimeFormat('de-DE',{dateStyle:'short',timeStyle:'short'}).format(new Date(data.updatedAt));
+  }catch(e){if(!current()||e.name==='AbortError')return;fetchFailed(e,hasPrevious);if(!hasPrevious){renderEmpty('Datenstand nicht erreichbar',e.message);$('record-count').textContent='–'}}
+  finally{if(current())$('refresh-button').disabled=false}
+}
 function distance(r){const a=state.residence?.location,b=r.location;if(!a||!b||state.kind==='hopees')return Infinity;const rad=Math.PI/180;const dLat=(b.lat-a.lat)*rad,dLon=(b.lon-a.lon)*rad;const h=Math.sin(dLat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLon/2)**2;return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
 function distanceLabel(r){const d=distance(r);return Number.isFinite(d)?'ca. '+Math.max(1,Math.round(d))+' km':''}
 function deadlineLabel(r){if(!/^\d{4}-\d{2}-\d{2}$/.test(r.deadline||''))return '';const d=new Date(r.deadline+'T12:00:00Z');return Number.isNaN(d.valueOf())?'':'bis '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Berlin'}).format(d)}
@@ -55,7 +98,7 @@ function render(){if(!state.connected||!state.chapter)return;const records=state
 function renderNearby(records){const nearby=records.filter(r=>Number.isFinite(distance(r))).sort((a,b)=>distance(a)-distance(b)).slice(0,3);$('nearby-section').hidden=!nearby.length||state.kind!=='sending';$('nearby-results').replaceChildren(...nearby.map(r=>{const b=element('button','nearby-row');b.append(element('span','',title(r)),element('span','',distanceLabel(r)));b.onclick=()=>selectRecord(r,document.querySelector('[data-record="'+CSS.escape(r.id)+'"]'));return b}))}
 function renderMap(records){if(!map||!layer)return;map.closePopup();layer.clearLayers();state.markers.clear();if(state.kind==='hopees'){const groups=new Map();for(const r of records){if(!r.location)continue;const key=r.country||'Unbekannt';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r)}for(const [country,group] of groups){const loc=group[0].location;const marker=L.marker([loc.lat,loc.lon],{icon:L.divIcon({className:'country-marker',html:String(group.length),iconSize:[36,36],iconAnchor:[18,18]})});const box=element('div','');box.append(element('h3','popup-heading',country),element('p','popup-row',group.length+' aktive Teilnehmende'));const list=element('div','country-popup-list');for(const [index,r] of group.entries()){const url=sourceLink(r.sourceUrl);const a=element(url?'a':'span','country-popup-link');a.append(element('span','','Eintrag '+(index+1)),element('span','',statusLabel(r)));if(url){a.href=url;a.target='_blank';a.rel='noopener noreferrer'}list.append(a);state.markers.set(r.id,marker)}box.append(list,element('p','popup-note','Nur das Gastland wird angezeigt. Einzelne Einträge öffnen die AFSer-Quelle.'));marker.bindPopup(box).addTo(layer)}}else{for(const r of records){if(!r.location||!Number.isFinite(r.location.lat)||!Number.isFinite(r.location.lon))continue;const color=r.urgent?'#bd343c':'#087f79';L.circle([r.location.lat,r.location.lon],{radius:r.location.radiusKm*1000,color,weight:1,opacity:.4,fillColor:color,fillOpacity:.09,interactive:false}).addTo(layer);const marker=L.circleMarker([r.location.lat,r.location.lon],{radius:r.urgent?8:6,fillColor:color,fillOpacity:1,color:'#fff',weight:2}).bindPopup(popup(r)).addTo(layer);state.markers.set(r.id,marker)}}}
 function fitMap(){if(!map)return;const points=[...state.markers.values()].map(m=>m.getLatLng());if(points.length)map.fitBounds(L.latLngBounds(points).pad(.25),{maxZoom:state.kind==='hopees'?4:11,animate:!mobileLayout.matches});else if(state.kind==='hopees')map.setView([25,10],2);else if(state.residence?.location&&state.chapter!=='all')map.setView([state.residence.location.lat,state.residence.location.lon],8);else map.setView([51.15,10.45],6)}
-$('connection-button').onclick=()=>showDialog('privacy-dialog');$('residence-button').onclick=openResidence;$('privacy-button').onclick=()=>showDialog('privacy-dialog');$('refresh-button').onclick=reloadPublic;$('fit-map').onclick=fitMap;$('urgent-only').onchange=render;$('sort-select').onchange=render;
+$('connection-button').onclick=()=>state.connected&&!state.fetchError?showDialog('privacy-dialog'):reloadPublic();$('residence-button').onclick=openResidence;$('privacy-button').onclick=()=>showDialog('privacy-dialog');$('refresh-button').onclick=reloadPublic;$('fit-map').onclick=fitMap;$('urgent-only').onchange=render;$('sort-select').onchange=render;
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());document.querySelectorAll('[data-route]').forEach(a=>a.onclick=e=>{if(e.ctrlKey||e.metaKey||e.shiftKey)return;e.preventDefault();setRoute(a.dataset.route,true)});document.querySelector('.brand').onclick=e=>{e.preventDefault();setRoute('sending',true)};addEventListener('popstate',()=>setRoute(routeFromPath()));
 $('chapter-select').onchange=()=>{state.chapter=$('chapter-select').value;updateScope();clearRecords();if(state.chapter)loadRecords()};
 let cityTimer;
@@ -63,10 +106,11 @@ function cancelPlaceSearch(){clearTimeout(cityTimer);state.placeRequest++;$('cit
 async function findPlaces(query){try{return (await request('/api/places?'+new URLSearchParams({q:query}))).places||[]}catch{return findPublicPlaces(query)}}
 async function restoreResidence(){
   if(state.chapters.some(c=>c.id===state.residence?.chapterId)||state.residence?.chapterId==='all'){state.chapter=state.residence.chapterId;return}
-  const place=state.residence;
+  const place=state.residence,chapterAtStart=state.chapter;
   if(searchKey(place?.city||'')==='munchen'){const chapter=state.chapters.find(c=>searchKey(c.name)==='munchen');if(chapter){state.residence={...place,chapterId:chapter.id};state.chapter=chapter.id;return}}
   if(place?.city){
     const matches=await findPlaces(place.postalCode||place.city);
+    if(state.residence!==place||state.chapter!==chapterAtStart)return;
     const exact=matches.filter(p=>searchKey(p.city)===searchKey(place.city));
     const chapters=new Set(exact.map(p=>p.chapterId).filter(Boolean));
     if(chapters.size===1){state.residence={...place,chapterId:[...chapters][0]};state.chapter=state.residence.chapterId;return}
