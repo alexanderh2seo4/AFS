@@ -65,6 +65,12 @@ python3 scripts/build_pages.py
 python3 -m http.server 5173 --bind 127.0.0.1 --directory docs
 ```
 
+The browser cancels superseded chapter requests, rejects mixed export generations, and bounds downloads to 12 seconds. Failed refreshes retain the last successful view for the selected chapter and display the failure. Run the fetch regression checks with:
+
+```sh
+node --test scripts/tests/*.mjs
+```
+
 Backend tests cover public field leakage, active/chapter filtering, randomized locations, source coverage, atomic snapshots, authentication and actual MCP stdio. Public file audits reject unknown fields and wrong home-circle radii before publishing.
 
 ## Attribution

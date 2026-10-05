@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import vm from 'node:vm';
+import {readFile} from 'node:fs/promises';
+import {latestRequest,publicDataStore} from '../../docs/assets/data-client.js';
+
+// Exercise the real application fetch functions with a minimal DOM, and actual
+// data-client validation. All records here are invented, with no private store.
+const source=(await readFile(new URL('../../docs/assets/app.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').split("initMap();setMobileView('list');")[0];
+const t1='2026-10-05T05:00:00Z',t2='2026-10-05T06:00:00Z';
+const manifest=(time=t1)=>({version:1,updatedAt:time,chapters:[{id:'MUC',name:'München'},{id:'FRE',name:'Freiburg'}],defaultChapterId:'MUC'});
+const chapter=(id='MUC',time=t1)=>({chapter:id,updatedAt:time,records:{sending:[{id:'a'.repeat(20),kind:'sending',chapterId:id,status:'open',urgent:true,city:'Fixture',sourceUrl:'https://www.afser.de/ereignis-liste/avtproject/42.html'}],hopees:[],hostees:[],families:[]}});
+const response=data=>new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
+class Element{
+  constructor(){this.textContent='';this.value='';this.hidden=false;this.disabled=false;this.children=[];this.dataset={};this.classList={add(){},remove(){},toggle(){}}}
+  append(...items){this.children.push(...items)}
+  replaceChildren(...items){this.children=items}
+  setAttribute(){} removeAttribute(){} addEventListener(){} close(){} showModal(){}
+  cloneNode(){const e=new Element();e.textContent=this.textContent;e.value=this.value;return e}
+}
+function app(fetchImpl){
+  const elements=new Map();const get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id)};
+  get('sort-select').value='distance';
+  const document={getElementById:get,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:get,body:new Element()};
+  const context=vm.createContext({document,location:{pathname:'/AFS/sending/'},localStorage:{getItem(){return null}},sessionStorage:{getItem(){return null}},URL,URLSearchParams,Intl,Date,Map,Set,structuredClone,globalThis:{},matchMedia:()=>({matches:false}),ResizeObserver:class{observe(){}},requestAnimationFrame:()=>{},addEventListener(){},setTimeout,clearTimeout,latestRequest,publicDataStore:(root)=>publicDataStore(root,{fetchImpl}),DEFAULT_RESIDENCE:{city:'München',location:{lat:48.13,lon:11.57}},searchKey:s=>s.toLowerCase().replace('ü','u'),findPublicPlaces:async()=>[]});
+  vm.runInContext(source.replace('import.meta.url',"'https://example.invalid/AFS/assets/app.js'"),context);
+  return {get,run:code=>vm.runInContext(code,context)};
+}
+test('failed manifest and chapter refresh retain the previous view and show its error',async()=>{
+  let failure='';const ui=app(async u=>failure==='manifest'&&String(u).includes('manifest')||failure==='chapter'&&String(u).includes('chapters/')?new Response('',{status:503}):response(String(u).includes('manifest')?manifest():chapter()));
+  await ui.run('loadPublic()');assert.equal(ui.get('record-count').textContent,1);const date=ui.get('updated-label').textContent;
+  for(const mode of ['manifest','chapter']){failure=mode;await ui.run('reloadPublic()');assert.equal(ui.get('record-count').textContent,1);assert.equal(ui.get('updated-label').textContent,date);assert.equal(ui.get('data-notice').hidden,false);assert.match(ui.get('data-notice').textContent,/zuletzt erfolgreich/);assert.equal(ui.get('refresh-button').disabled,false)}
+  failure='';await ui.run('reloadPublic()');assert.equal(ui.run('state.fetchError'),'');assert.equal(ui.get('connection-label').textContent,'Öffentliche Karte');
+});
+test('initial failure is retryable from the connection button',async()=>{
+  let offline=true;const ui=app(async u=>offline?new Response('',{status:503}):response(String(u).includes('manifest')?manifest():chapter()));
+  await ui.run('loadPublic()');assert.equal(ui.run('state.connected'),false);assert.equal(ui.get('record-count').textContent,'–');
+  offline=false;await ui.get('connection-button').onclick();assert.equal(ui.run('state.connected'),true);assert.equal(ui.get('record-count').textContent,1);
+});
+test('slow chapter response cannot replace a newer chapter selection',async()=>{
+  let resolve;const delayed=new Promise(r=>resolve=r);const ui=app(async u=>String(u).includes('manifest')?response(manifest()):String(u).includes('/FRE.json')?delayed:response(chapter()));
+  await ui.run('loadPublic()');const old=ui.run("state.chapter='FRE';clearRecords();loadRecords()");
+  await ui.run("state.chapter='MUC';clearRecords();loadRecords()");resolve(response(chapter('FRE')));await old;
+  assert.equal(ui.run('state.records[0].chapterId'),'MUC');assert.equal(ui.get('record-count').textContent,1);assert.equal(ui.get('refresh-button').disabled,false);
+});
+test('switching route clears the old count, urgency, timestamp and records on failure',async()=>{
+  let offline=false;const ui=app(async u=>offline?new Response('',{status:503}):response(String(u).includes('manifest')?manifest():chapter()));
+  await ui.run('loadPublic()');offline=true;
+  // setRoute starts its asynchronous read, and loadRecords exercises the same
+  // supersession path when another selection arrives before that read finishes.
+  await ui.run("state.chapter='FRE';setRoute('hostees');loadRecords()");
+  assert.equal(ui.run('state.records.length'),0);assert.equal(ui.get('record-count').textContent,'–');assert.equal(ui.get('urgent-count').hidden,true);assert.equal(ui.get('updated-label').textContent,'');
+});
+test('a mixed deployment refreshes its manifest once before retrying the chapter',async()=>{
+  let manifests=0,chapterReads=0;const ui=app(async u=>String(u).includes('manifest')?response(manifest(++manifests===1?t1:t2)):(chapterReads++,response(chapter('MUC',t2))));
+  await ui.run('loadPublic()');assert.equal(manifests,2);assert.equal(chapterReads,2);assert.equal(ui.run('state.updatedAt'),t2);assert.equal(ui.get('record-count').textContent,1);
+});

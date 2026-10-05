@@ -23,7 +23,7 @@ export async function readJSON(url, {signal, timeoutMs = 12000, fetchImpl = glob
   try {
     const response = await fetchImpl(url, {signal:controller.signal, cache:'no-store', credentials:'omit', referrerPolicy:'no-referrer'});
     if (!response.ok) throw new DataError('unavailable');
-    if (!response.headers.get('content-type')?.includes('application/json')) throw new DataError('invalid');
+    if (!response.headers.get('content-type')?.toLowerCase().includes('application/json')) throw new DataError('invalid');
     try { return await response.json(); }
     catch (error) { if (controller.signal.aborted) throw error; throw new DataError('invalid'); }
   } catch (error) {
@@ -104,10 +104,13 @@ export function publicDataStore(base, options = {}) {
     },
     async places({signal} = {}) {
       if (!manifest) throw new DataError('invalid');
-      const capturedEpoch = epoch;
+      const capturedEpoch = epoch, version = manifest;
       // Shared read is not owned by one keystroke's cancellation signal.
-      if (!placesPromise) placesPromise = read('places.json', manifest).then(data => {
+      if (!placesPromise) placesPromise = read('places.json', version).then(data => {
         if (!Array.isArray(data?.places)) throw new DataError('invalid');
+        if (version.generation && data.generation !== version.generation) throw new DataError('changed');
+        const chapters = new Set(version.chapters.map(c => c.id));
+        if (data.places.some(row => !Array.isArray(row) || row.length !== 6 || typeof row[0] !== 'string' || typeof row[1] !== 'string' || !row[1] || row[2] !== null && !chapters.has(row[2]) || !Number.isFinite(row[3]) || Math.abs(row[3]) > 90 || !Number.isFinite(row[4]) || Math.abs(row[4]) > 180 || !/^\d{5}$/.test(row[5]))) throw new DataError('invalid');
         return data.places;
       }).catch(error => { if (capturedEpoch === epoch) placesPromise = null; throw error; });
       const rows = await placesPromise;

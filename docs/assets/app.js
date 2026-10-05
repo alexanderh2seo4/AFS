@@ -77,7 +77,7 @@ async function loadRecords(){
       if(e.code!=='changed'||!current())throw e;
       // A deployment can briefly serve its old manifest with new chapter files.
       const fresh=await request('/api/chapters',{signal:job.signal});if(!current())return;
-      state.chapters=fresh.chapters;populateChapters();if(!current())return;
+      state.chapters=fresh.chapters;populateChapters();if(!current()){if(recordRequests.isCurrent(job)&&state.chapter!==chapter){clearRecords();openResidence()}return;}
       data=await request(path,{signal:job.signal});
     }
     if(!current())return;

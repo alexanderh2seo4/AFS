@@ -54,3 +54,11 @@ test('a failed shared geography download can be retried',async()=>{
   let reads=0;const store=publicDataStore('https://example.invalid/AFS/',{fetchImpl:async u=>String(u).includes('manifest')?response(manifest(t1)):++reads===1?new Response('',{status:503}):response({places:[['80331','München','MUC',48.13,11.57,'80331']]})});
   await store.refresh();await assert.rejects(store.places());assert.equal((await store.places()).length,1);
 });
+
+test('geography must match the published generation and contain valid chapter coordinates',async()=>{
+  const generation='b'.repeat(64),row=['postal-fixture','München','MUC',48.13,11.57,'80331'];
+  for(const data of [{places:[row],generation:'c'.repeat(64)},{places:[[...row.slice(0,3),999,11.57,'80331']],generation},{places:[[...row.slice(0,2),'unknown',...row.slice(3)]],generation},{places:[row.slice(0,5)],generation}]){
+    const store=publicDataStore('https://example.invalid/AFS/',{fetchImpl:async u=>response(String(u).includes('manifest')?{...manifest(t1),generation}:data)});
+    await store.refresh();await assert.rejects(store.places(),DataError);
+  }
+});
