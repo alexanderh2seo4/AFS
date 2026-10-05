@@ -94,3 +94,27 @@ test('picker shows only committees with data for the current section and falls b
   assert.deepEqual(ui.get('chapter-select').children.map(option=>option.value),['','all']);
   assert.equal(ui.get('record-count').textContent,0);
 });
+
+test('navigation sync updates returnees, brand and route links to canonical absolute URLs', async () => {
+  const ui = app(async u => response(manifest()));
+  ui.run(`
+    const brand = { href: './', className: 'brand' };
+    const route = { href: 'hostees/', dataset: { route: 'hostees' }, classList: { toggle(){}, add(){}, remove(){} }, setAttribute(){}, removeAttribute(){} };
+    const ret = { href: 'returnees/', textContent: 'Returnees', classList: { toggle(){}, add(){}, remove(){} }, setAttribute(){}, removeAttribute(){} };
+    const contact = { href: 'Kontaktformular/', className: 'contact-form-link' };
+    document.querySelectorAll = selector => {
+      if (selector === '.brand') return [brand];
+      if (selector === '[data-route]') return [route];
+      if (selector === 'nav a') return [route, ret];
+      if (selector.includes('Kontaktformular')) return [contact];
+      return [];
+    };
+    syncNavigation();
+    globalThis.__navResult = { brandHref: brand.href, routeHref: route.href, retHref: ret.href, contactHref: contact.href };
+  `);
+  const result = ui.run('globalThis.__navResult');
+  assert.equal(result.brandHref, 'https://example.invalid/AFS/');
+  assert.equal(result.routeHref, 'https://example.invalid/AFS/hostees/');
+  assert.equal(result.retHref, 'https://example.invalid/AFS/returnees/');
+  assert.equal(result.contactHref, 'https://example.invalid/AFS/Kontaktformular/');
+});

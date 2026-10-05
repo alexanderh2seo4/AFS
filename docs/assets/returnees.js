@@ -1,9 +1,21 @@
 const byId = id => document.getElementById(id);
-const siteRoot = new URL('../', location.href);
+const siteRoot = new URL('../', import.meta.url);
 const datasetUrl = new URL('data/returnees.json', siteRoot);
 const workbookUrl = new URL('data/returnees.xlsx', siteRoot);
 let dataset = null;
 let loading = false;
+
+function syncNavigation() {
+  document.querySelectorAll?.('.brand')?.forEach(a => { a.href = new URL('./', siteRoot).href; });
+  document.querySelectorAll?.('nav a')?.forEach(a => {
+    const text = a.textContent?.trim();
+    if (text === 'Sending') a.href = new URL('sending/', siteRoot).href;
+    else if (text === 'Awayees') a.href = new URL('awayees/', siteRoot).href;
+    else if (text === 'Hostees') a.href = new URL('hostees/', siteRoot).href;
+    else if (text === 'Gastfamilien') a.href = new URL('families/', siteRoot).href;
+    else if (text === 'Returnees') a.href = new URL('returnees/', siteRoot).href;
+  });
+}
 
 function validDataset(data) {
   if (!data || data.version !== 1 || data.scope !== 'afser-accessible' || !Array.isArray(data.records) || !Array.isArray(data.archiveMonths) || !/^[a-f0-9]{64}$/.test(data.generation || '') || typeof data.updatedAt !== 'string' || !Number.isFinite(Date.parse(data.updatedAt))) return false;
@@ -136,6 +148,7 @@ async function refresh() {
 byId('year-select').addEventListener('change', render);
 byId('show-all').addEventListener('change', render);
 byId('sort-select').addEventListener('change', render);
+syncNavigation();
 refresh();
 setInterval(refresh, 60_000);
 addEventListener('focus', refresh);

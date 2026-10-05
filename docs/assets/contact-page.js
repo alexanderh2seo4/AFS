@@ -73,7 +73,7 @@ $('contact-page-form').addEventListener('submit',async event=>{
     const response=await fetch(buildEndpoint(),{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!response.ok){setMessage(response.status===429?'Bitte warte kurz und versuche es erneut.':'Das Absenden ist gerade fehlgeschlagen. Bitte versuche es erneut.');return}
     try{localStorage.setItem('afs-contact-submitted-v1',config.noticeVersion)}catch{}
-    window.location.assign(new URL('../',window.location.href));
+    window.location.assign(root.href);
   }catch{setMessage('Das Absenden ist gerade fehlgeschlagen. Bitte versuche es erneut.')}finally{button.disabled=!config.enabled}
 });
 

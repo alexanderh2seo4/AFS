@@ -62,6 +62,12 @@ function validateChapter(data, chapter, manifest) {
   if (!data || data.chapter !== chapter || !data.records || typeof data.records !== 'object') throw new DataError('invalid');
   if (data.updatedAt !== manifest.updatedAt || manifest.generation && data.generation !== manifest.generation) throw new DataError('changed');
   const ids = new Set(manifest.chapters.map(c => c.id));
+  if (!data.records.awayees && Array.isArray(data.records.hopees)) {
+    data.records.awayees = data.records.hopees;
+  }
+  if (Array.isArray(data.records.awayees)) {
+    data.records.awayees = data.records.awayees.map(r => r && typeof r === 'object' && r.kind === 'hopees' ? {...r, kind: 'awayees'} : r);
+  }
   for (const kind of KINDS) {
     if (!Array.isArray(data.records[kind])) throw new DataError('invalid');
     const seen = new Set();
@@ -95,14 +101,15 @@ export function publicDataStore(base, options = {}) {
       return manifest;
     },
     async records(kind, chapter, {signal} = {}) {
-      if (!manifest || !KINDS.includes(kind) || chapter !== 'all' && !manifest.chapters.some(c => c.id === chapter)) throw new DataError('invalid');
+      const normalizedKind = kind === 'hopees' ? 'awayees' : kind;
+      if (!manifest || !KINDS.includes(normalizedKind) || chapter !== 'all' && !manifest.chapters.some(c => c.id === chapter)) throw new DataError('invalid');
       const version = manifest, capturedEpoch = epoch, cache = chapterCache;
       // Cache completed documents only: cancelled requests must not poison retries.
       let data = cache.get(chapter);
       if (!data) data = validateChapter(await read('chapters/' + encodeURIComponent(chapter) + '.json', version, signal), chapter, version);
       if (capturedEpoch !== epoch || signal?.aborted) throw abortError();
       cache.set(chapter, data);
-      return {records:data.records[kind], updatedAt:data.updatedAt, kind, chapter};
+      return {records:data.records[normalizedKind], updatedAt:data.updatedAt, kind:normalizedKind, chapter};
     },
     async availableChapterIds({signal} = {}) {
       const capturedEpoch = epoch;

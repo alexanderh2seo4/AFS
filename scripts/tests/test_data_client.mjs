@@ -50,6 +50,18 @@ test('mixed CDN snapshot, private fields, wrong chapters and missing kinds are r
     await store.refresh();await assert.rejects(store.records('sending','MUC'),DataError);
   }
 });
+test('chapter documents using hopees category are accepted and normalized to awayees',async()=>{
+  const legacyChapter={updatedAt:t1,chapter:'MUC',records:{sending:[record('MUC')],hopees:[{id:'d'.repeat(20),kind:'hopees',chapterId:'MUC',status:'active',sourceUrl:'https://www.afser.de/fixture'}],hostees:[],families:[]}};
+  const store=publicDataStore('https://example.invalid/AFS/',{fetchImpl:async u=>response(String(u).includes('manifest')?manifest(t1):legacyChapter)});
+  await store.refresh();
+  const res=await store.records('awayees','MUC');
+  assert.equal(res.records.length,1);
+  assert.equal(res.records[0].kind,'awayees');
+  assert.equal(res.records[0].id,'d'.repeat(20));
+  const resHopees=await store.records('hopees','MUC');
+  assert.equal(resHopees.records.length,1);
+  assert.equal(resHopees.records[0].kind,'awayees');
+});
 test('a failed shared geography download can be retried',async()=>{
   let reads=0;const store=publicDataStore('https://example.invalid/AFS/',{fetchImpl:async u=>String(u).includes('manifest')?response(manifest(t1)):++reads===1?new Response('',{status:503}):response({places:[['80331','München','MUC',48.13,11.57,'80331']]})});
   await store.refresh();await assert.rejects(store.places());assert.equal((await store.places()).length,1);
