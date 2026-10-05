@@ -2,7 +2,7 @@ import {findPublicPlaces} from './locations.js';
 
 const $=id=>document.getElementById(id);
 const root=new URL('../',import.meta.url);
-const allowedInterests=new Set(['sending_interviews','hosting','exchange','other']);
+const allowedInterests=new Set(['sending_interviews','hosting','weekend_hosting']);
 let config={enabled:false,apiBaseUrl:'',noticeVersion:'',purpose:'',retentionText:'',privacyContact:''};
 let selectedPlace=null;
 let searchTimer;
