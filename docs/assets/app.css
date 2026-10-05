@@ -3,6 +3,15 @@
 .map-panel:has(.leaflet-popup) .map-top-note,.map-panel:has(.leaflet-popup) .map-fit,.map-panel:has(.leaflet-popup) .map-legend{display:none}
 @media(max-width:1050px){header{padding:0 22px;gap:22px}nav{gap:0}nav a{padding-left:13px;padding-right:13px}main{padding:26px 22px 16px}.scope-note{display:none}.workspace{grid-template-columns:330px 1fr}h1{font-size:28px}.page-heading p:not(.eyebrow){max-width:510px}.map-top-note{max-width:170px;line-height:1.4}.map-fit{max-width:130px}.map-legend{gap:10px}.area-legend{display:none!important}}
 /* Keep phone controls readable, including Safari's focused form fields. */
+@media(min-width:761px) and (max-width:1050px){
+  .toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px}
+  .chapter-picker{min-width:0}
+  .chapter-picker select{width:100%;max-width:none;min-width:0}
+  .record-filter{min-width:0}
+  .record-filter select{width:100%;min-width:0}
+  .urgent-filter{grid-column:1;margin-left:0}
+  .subtle-button{grid-column:2;justify-self:end;padding:10px 12px}
+}
 @media(max-width:760px){
   header{height:auto;min-height:76px;display:grid;grid-template-columns:minmax(0,1fr) auto;padding:12px max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));gap:8px 12px}
   .brand{grid-column:1;grid-row:1;font-size:21px;gap:10px}
