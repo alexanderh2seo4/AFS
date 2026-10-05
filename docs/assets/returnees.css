@@ -1,0 +1,47 @@
+.returnees-main{max-width:1360px;min-height:calc(100vh - 78px);padding-bottom:44px}
+.returnees-download{white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:46px}
+.returnee-controls{display:flex;align-items:end;gap:18px;padding:18px 20px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 12px #102b4608}
+.returnee-controls>label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:650;color:var(--muted)}
+.returnee-controls select{min-width:210px;min-height:44px;border:1px solid var(--line);border-radius:7px;background:#fff;padding:9px 34px 9px 12px;color:var(--navy)}
+.returnee-controls .returnee-checkbox{display:flex;flex-direction:row;align-items:center;gap:9px;margin-right:auto;min-height:44px;color:var(--navy);font-size:14px}
+.returnee-checkbox input{width:18px;height:18px;accent-color:var(--teal)}
+.returnee-summary{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin:20px 0 12px;color:var(--muted);font-size:13px}
+.returnee-summary p{margin:0;display:flex;align-items:baseline;gap:8px}
+.returnee-summary strong{font-size:27px;color:var(--navy);letter-spacing:-.5px}
+.returnee-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px;background:white;box-shadow:0 2px 12px #102b4608}
+.returnee-table{border-collapse:collapse;width:100%;min-width:760px;text-align:left}
+.returnee-table th{position:sticky;top:0;background:var(--navy);color:white;text-align:left;padding:14px 16px;font-size:13px;font-weight:650;white-space:nowrap}
+.returnee-table th+th{border-left:1px solid #ffffff38}
+.returnee-table td{padding:13px 16px;border-top:1px solid #edf1f5;font-size:14px;color:#29465e;vertical-align:middle}
+.returnee-table tbody tr:nth-child(even){background:#f8fafc}
+.returnee-table tbody tr:hover{background:#eff8f7}
+.returnee-table td:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#607489;white-space:nowrap}
+.camp-status{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.camp-status::before{content:"";width:8px;height:8px;border-radius:50%;background:#c78a22}
+.camp-status.done::before{background:#16877f}
+.camp-status.done{color:#08746d}
+.returnee-empty{text-align:center!important;color:var(--muted)!important;padding:32px!important}
+.returnee-notes{margin:16px 0 24px;color:var(--muted);font-size:12px;line-height:1.6}
+.returnee-notes p{margin:6px 0}
+.returnee-archive{display:flex;justify-content:space-between;align-items:start;gap:24px;padding:20px;border:1px solid var(--line);border-radius:10px;background:white}
+.returnee-archive h2{margin:0 0 6px;font-size:16px;color:var(--navy)}
+.returnee-archive p{max-width:640px;margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+.archive-links{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;max-width:460px}
+.archive-links a{display:inline-flex;align-items:center;min-height:38px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;text-decoration:none;font-size:12px;color:var(--teal);white-space:nowrap}
+.archive-links a:hover{background:#eff8f7}
+.returnee-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:var(--muted);font-size:11px}
+.returnee-error{margin:14px 0;padding:12px 14px;border-radius:7px;background:#fff0f0;color:#9a272e;font-size:13px;line-height:1.5}
+@media(max-width:760px){
+  .returnees-main{min-height:calc(100svh - 126px);padding-top:20px}
+  .returnees-download{width:100%;margin-top:16px;min-height:48px;white-space:normal;text-align:center}
+  .returnee-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:14px}
+  .returnee-controls>label{display:grid;grid-template-columns:105px minmax(0,1fr);align-items:center;gap:8px;font-size:13px}
+  .returnee-controls select{min-width:0;width:100%;min-height:46px;font-size:16px}
+  .returnee-controls .returnee-checkbox{min-height:44px;margin:0;display:flex}
+  .returnee-summary{gap:8px 18px;margin:16px 0 10px}
+  .returnee-summary strong{font-size:24px}
+  .returnee-table th,.returnee-table td{padding:12px}
+  .returnee-archive{display:block;padding:16px}
+  .archive-links{justify-content:flex-start;margin-top:14px}
+  .returnee-footer{line-height:1.5}
+}

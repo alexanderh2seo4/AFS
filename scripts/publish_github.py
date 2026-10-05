@@ -13,6 +13,8 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import zipfile
+import xml.etree.ElementTree as ET
 from datetime import date
 from pathlib import Path
 
@@ -154,14 +156,18 @@ def audit_tracked(directory, mcp=False):
     if not files:
         raise PublishError("The repository has no tracked code to publish.")
     banned_parts = {".private-data", ".venv", "node_modules", "__pycache__", ".git"}
-    banned_suffixes = {".sqlite", ".sqlite3", ".db", ".csv", ".tsv", ".log", ".zip", ".tgz", ".png", ".jpg", ".jpeg", ".pdf"}
+    banned_suffixes = {".sqlite", ".sqlite3", ".db", ".csv", ".tsv", ".xlsx", ".log", ".zip", ".tgz", ".png", ".jpg", ".jpeg", ".pdf"}
     blocked = []
     for filename in files:
         path = Path(filename)
         full = directory / path
         allowed_root = path.parts[0] in {"src", "tests"} if mcp else path.parts[0] in {"docs", "scripts"}
         allowed_name = filename in ({"README.md", "pyproject.toml", "uv.lock", ".gitignore", "LICENSE"} if mcp else {"README.md", "AFSER_ACCESS.md", ".gitignore", "LICENSE"})
-        if (not allowed_root and not allowed_name) or banned_parts.intersection(path.parts) or path.suffix.lower() in banned_suffixes or path.name in {".afser-password", "invite.html", "source.json", "tokens.json", "bridge.json", "data.json"} or (path.name.startswith(".env") and path.name != ".env.example") or full.is_symlink():
+        allowed_returnees_workbook = not mcp and (
+            filename == "docs/data/returnees.xlsx"
+            or re.fullmatch(r"docs/data/returnees/archive/20\d{2}-(?:0[1-9]|1[0-2])\.xlsx", filename)
+        )
+        if (not allowed_root and not allowed_name) or banned_parts.intersection(path.parts) or (path.suffix.lower() in banned_suffixes and not allowed_returnees_workbook) or path.name in {".afser-password", "invite.html", "source.json", "tokens.json", "bridge.json", "data.json"} or (path.name.startswith(".env") and path.name != ".env.example") or full.is_symlink():
             blocked.append(filename)
     if blocked:
         raise PublishError("Refusing to publish private or unexpected tracked paths: " + ", ".join(blocked))
@@ -170,17 +176,121 @@ def audit_tracked(directory, mcp=False):
     return len(files)
 
 
+RETURN_HEADERS = ["Anonymer Schlüssel", "Austauschjahr", "AFS-Seminar 1", "AFS-Seminar 2", "Alle Camps absolviert"]
+RETURN_NOTE = "Ein Seminar gilt als absolviert, wenn das entsprechende AFS-Seminarfeld in AFSer ausgefüllt ist. Nur mit diesem AFSer-Zugang erreichbare Returnees."
+XLSX_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+
+def audit_returnees_xlsx(path):
+    required_parts = {
+        "[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "docProps/app.xml",
+        "xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/styles.xml",
+        "xl/worksheets/sheet1.xml", "xl/worksheets/_rels/sheet1.xml.rels", "xl/tables/table1.xml",
+    }
+    try:
+        with zipfile.ZipFile(path) as workbook:
+            if set(workbook.namelist()) != required_parts or workbook.testzip() is not None:
+                raise PublishError("The returnee workbook contains unexpected or damaged parts.")
+            workbook_xml = ET.fromstring(workbook.read("xl/workbook.xml"))
+            sheets = workbook_xml.findall(f"{{{XLSX_MAIN}}}sheets/{{{XLSX_MAIN}}}sheet")
+            if len(sheets) != 1 or sheets[0].get("name") != "Returnees" or sheets[0].get("state", "visible") != "visible":
+                raise PublishError("The returnee workbook failed its sheet audit.")
+            sheet = ET.fromstring(workbook.read("xl/worksheets/sheet1.xml"))
+            if sheet.find(f".//{{{XLSX_MAIN}}}f") is not None or sheet.find(f".//{{{XLSX_MAIN}}}hyperlinks") is not None:
+                raise PublishError("The returnee workbook contains an unapproved formula or link.")
+            table = ET.fromstring(workbook.read("xl/tables/table1.xml"))
+            if table.get("name") != "ReturneesTable" or table.get("displayName") != "ReturneesTable":
+                raise PublishError("The returnee workbook failed its table audit.")
+            table_columns = table.findall(f"{{{XLSX_MAIN}}}tableColumns/{{{XLSX_MAIN}}}tableColumn")
+            if [column.get("name") for column in table_columns] != RETURN_HEADERS:
+                raise PublishError("The returnee workbook contains unapproved columns.")
+            table_ref = table.get("ref", "")
+            if not re.fullmatch(r"A5:E(?:[5-9]|[1-9][0-9]+)", table_ref):
+                raise PublishError("The returnee workbook has an invalid table range.")
+            cells = {}
+            for row in sheet.findall(f"{{{XLSX_MAIN}}}sheetData/{{{XLSX_MAIN}}}row"):
+                for cell in row.findall(f"{{{XLSX_MAIN}}}c"):
+                    ref = cell.get("r", "")
+                    if cell.get("t") == "inlineStr":
+                        value = "".join(node.text or "" for node in cell.findall(f".//{{{XLSX_MAIN}}}t"))
+                    else:
+                        value_node = cell.find(f"{{{XLSX_MAIN}}}v")
+                        value = value_node.text if value_node is not None else None
+                        if cell.get("t") == "b" and value is not None:
+                            value = value == "1"
+                    cells[ref] = value
+            if cells.get("A1") != "AFS Returnees" or not isinstance(cells.get("A2"), str) or not cells["A2"].startswith("Datenstand: ") or cells.get("A3") != RETURN_NOTE:
+                raise PublishError("The returnee workbook failed its privacy-note audit.")
+            last_row = int(table_ref.split(":", 1)[1][1:])
+            if table_ref != f"A5:E{last_row}" or last_row != max(5, max((int(re.search(r"\d+$", ref).group()) for ref in cells if re.match(r"^[A-E]\d+$", ref)), default=5)):
+                raise PublishError("The returnee workbook contains data outside its approved table.")
+            if [cells.get(f"{column}5") for column in "ABCDE"] != RETURN_HEADERS:
+                raise PublishError("The returnee workbook headers do not match its table definition.")
+            records = []
+            seen = set()
+            for row_number in range(6, last_row + 1):
+                values = [cells.get(f"{column}{row_number}") for column in "ABCDE"]
+                alias, year, seminar1, seminar2, complete = values
+                if not isinstance(alias, str) or not re.fullmatch(r"[a-f0-9]{20}", alias) or alias in seen:
+                    raise PublishError("The returnee workbook contains an invalid anonymous key.")
+                if year is not None:
+                    if not re.fullmatch(r"(?:19|20|21)\d{2}", str(year)):
+                        raise PublishError("The returnee workbook contains an invalid year.")
+                    year = int(year)
+                if seminar1 not in {"Absolviert", "Nicht eingetragen"} or seminar2 not in {"Absolviert", "Nicht eingetragen"} or complete not in {"Ja", "Nein"}:
+                    raise PublishError("The returnee workbook contains an invalid camp status.")
+                if (complete == "Ja") != (seminar1 == "Absolviert" and seminar2 == "Absolviert"):
+                    raise PublishError("The returnee workbook has an inconsistent camp status.")
+                seen.add(alias)
+                records.append([alias, year, seminar1, seminar2, complete])
+            if len(records) != last_row - 5:
+                raise PublishError("The returnee workbook table row count is inconsistent.")
+            return records
+    except (OSError, zipfile.BadZipFile, ET.ParseError, KeyError, ValueError, TypeError, AttributeError):
+        raise PublishError("The returnee workbook failed its privacy and structure audit.") from None
+
+
 def audit_public_data(root):
     fields={'id','kind','chapterId','status','urgent','deadline','country','sourceUrl','city','location','hasOpenRoles','pickedAt'}
     manifest=json.loads((root/'manifest.json').read_text())
     if set(manifest) != {'version','updatedAt','chapters','counts','defaultChapterId','defaultResidence','privacy','generation'} or manifest['version'] != 1 or not re.fullmatch(r'[a-f0-9]{64}',manifest.get('generation','')):
         raise PublishError('The public map manifest failed its field audit.')
+    returnees = json.loads((root / 'returnees.json').read_text()) if (root / 'returnees.json').is_file() else None
+    if returnees is None or set(returnees) != {'version','updatedAt','scope','archiveMonths','records','generation'} or returnees.get('version') != 1 or returnees.get('scope') != 'afser-accessible' or not isinstance(returnees.get('updatedAt'),str) or not re.fullmatch(r'[a-f0-9]{64}',returnees.get('generation','')):
+        raise PublishError('The public returnee manifest failed its field audit.')
+    if not isinstance(returnees.get('archiveMonths'),list) or any(not isinstance(month,str) or not re.fullmatch(r'20\d{2}-(0[1-9]|1[0-2])',month) for month in returnees['archiveMonths']) or returnees['archiveMonths'] != sorted(set(returnees['archiveMonths'])) or not isinstance(returnees.get('records'),list):
+        raise PublishError('The public returnee archive index failed its field audit.')
+    return_fields={'id','year','seminar1Completed','seminar2Completed','allCampsCompleted'}
+    return_ids=set()
+    for record in returnees.get('records',[]):
+        if not isinstance(record,dict) or set(record)!=return_fields or not re.fullmatch(r'[0-9a-f]{20}',record.get('id','')) or record['id'] in return_ids:
+            raise PublishError('The public returnee data failed its field audit.')
+        if record['year'] is not None and (type(record['year']) is not int or not 1900 <= record['year'] <= 2100):
+            raise PublishError('The public returnee year failed its field audit.')
+        if any(type(record[key]) is not bool for key in ('seminar1Completed','seminar2Completed','allCampsCompleted')) or record['allCampsCompleted'] != (record['seminar1Completed'] and record['seminar2Completed']):
+            raise PublishError('The public returnee camp fields failed their field audit.')
+        return_ids.add(record['id'])
+    archive_paths=set()
     for path in root.rglob('*'):
         if path.is_dir():continue
         relative=path.relative_to(root)
-        if path.is_symlink() or path.suffix!='.json':raise PublishError('Unexpected public map file.')
+        if path.is_symlink():raise PublishError('Unexpected public map file.')
+        if path.suffix.lower()=='.xlsx':
+            if relative.as_posix()=='returnees.xlsx':
+                rows=audit_returnees_xlsx(path)
+                expected=[]
+                for record in returnees['records']:
+                    expected.append([record['id'],record['year'],'Absolviert' if record['seminar1Completed'] else 'Nicht eingetragen','Absolviert' if record['seminar2Completed'] else 'Nicht eingetragen','Ja' if record['allCampsCompleted'] else 'Nein'])
+                if rows!=expected:raise PublishError('The current returnee workbook does not match its JSON dataset.')
+                continue
+            if len(relative.parts)==3 and relative.parts[:2]==('returnees','archive') and re.fullmatch(r'20\d{2}-(0[1-9]|1[0-2])\.xlsx',path.name):
+                audit_returnees_xlsx(path);archive_paths.add(path.stem);continue
+            raise PublishError('Unexpected public workbook path.')
+        if path.suffix!='.json':raise PublishError('Unexpected public map file.')
         data=json.loads(path.read_text())
         if relative.as_posix()=='manifest.json':continue
+        if relative.as_posix()=='returnees.json':
+            continue
         if relative.as_posix()=='places.json':
             if set(data)!={'places','generation'} or data['generation']!=manifest['generation'] or any(not isinstance(row,list) or len(row)!=6 for row in data['places']):
                 raise PublishError('The public locality file failed its field audit.')
@@ -205,6 +315,8 @@ def audit_public_data(root):
                 location=record.get('location')
                 if location and (set(location)-{'lat','lon','radiusKm','scope'} or location.get('radiusKm')!=(0 if kind=='awayees' else 1)):
                     raise PublishError('Unapproved public location fields or radius.')
+    if archive_paths!=set(returnees['archiveMonths']) or 'returnees.xlsx' not in {path.relative_to(root).as_posix() for path in root.rglob('*.xlsx')}:
+        raise PublishError('The public returnee workbooks do not match the archive index.')
 
 
 def push(directory, repo, branch, mcp=False):

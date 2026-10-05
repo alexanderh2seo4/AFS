@@ -98,3 +98,6 @@
 @media(max-width:760px){.show-all-button{min-height:40px}}
 
 @media(min-width:761px){.map-panel>.desktop-map-popup{position:absolute!important;transform:none!important;margin:0!important;z-index:700!important}.desktop-map-popup .leaflet-popup-tip-container{display:none}.desktop-map-popup .leaflet-popup-content-wrapper{max-height:min(460px,calc(100% - 52px));overflow:auto}}
+
+@media(max-width:760px){header nav{grid-template-columns:repeat(5,minmax(0,1fr))}header nav a{padding:10px 2px;font-size:clamp(10px,3.2vw,13px)}}
+@media(min-width:761px) and (max-width:940px){header{gap:12px}header nav a{padding-left:8px;padding-right:8px;font-size:13px}}
