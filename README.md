@@ -21,25 +21,22 @@ Sending source links open verified signup project pages. Hopees, Hostees and fam
 
 ## Automatic publication
 
-The local updater synchronizes AFSer, validates a complete source snapshot, exports only approved active fields, audits the public files, commits only `docs/data/` and pushes GitHub Pages. It runs every **30 minutes** while this computer's current session is running. A source failure preserves the previous published snapshot. GitHub continues serving that snapshot while this computer is offline; a notice appears if it is more than 24 hours old.
+The dedicated updater runs in Ubuntu on **elrsisbest** (`alex-pc` / `alex-linux` over SSH), in `~/work/afs-live/site`. It imports AFSer immediately on startup and every **5 minutes after a completed import**, validates the snapshot, exports only anonymous fields, audits the files and publishes GitHub Pages. Open browser tabs check for new data every **minute**, on returning to the tab, and after reconnecting. GitHub Pages build/CDN time adds a short delay; this is automatic polling, not an instantaneous AFSer event feed. Failed imports retain the last published snapshot.
+
+The `afs-live.service` user service restarts failed workers. Windows starts Ubuntu through the `AFS Live Updater` scheduled task; user lingering keeps the Linux service running independently of SSH sessions. The worker fast-forwards both dedicated repositories before an import and refuses dirty checkouts. Its repository-specific deployment key can publish only the AFS repository. Source login, database, projection key and caches remain private on that computer.
 
 ```sh
-python3 scripts/update_public.py background
-python3 scripts/update_public.py status
-python3 scripts/update_public.py stop
+ssh alex-linux 'systemctl --user status afs-live.service'
+ssh alex-linux 'cd ~/work/afs-live/site && python3 scripts/update_public.py status'
 ```
 
-After reboot/login, start the updater again from an authorized terminal or Codex session. macOS blocked the old LaunchAgent's Documents access; no privacy settings were weakened. To synchronize and publish immediately:
+The old laptop updater is stopped to avoid competing writers. A local fallback can still be started explicitly:
 
 ```sh
-python3 scripts/update_public.py sync-and-publish
+python3 scripts/update_public.py background --interval 300 --initial-sync
 ```
 
-To publish an already complete local snapshot without reading AFSer again:
-
-```sh
-python3 scripts/update_public.py once
-```
+For immediate manual publication, stop the worker first and run `python3 scripts/update_public.py sync-and-publish`. `once` exports an already committed snapshot without reading AFSer again.
 
 ## Source coverage
 

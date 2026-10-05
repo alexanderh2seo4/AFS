@@ -36,7 +36,12 @@ def checked(args, cwd=ROOT):
     return result.stdout
 
 
-def publish(sync=False):
+def publish(sync=False,follow_main=False):
+    if follow_main:
+        for repository in (ROOT, ROOT/'mcp'):
+            if checked(['git','status','--porcelain','--untracked-files=no'],cwd=repository).strip():
+                raise RuntimeError('working_tree_changes_present')
+            checked(['git','pull','--ff-only','origin','main'],cwd=repository)
     uv = shutil.which('uv') or str(Path.home() / '.local/bin/uv')
     command = [uv,'run','--project',str(ROOT/'mcp'),'afser-data','--data-dir',str(PRIVATE)]
     if sync:
@@ -56,17 +61,18 @@ def publish(sync=False):
     print('Anonymous GitHub snapshot published.',flush=True)
 
 
-def run():
+def run(interval=1800, initial=False, follow_main=False):
     descriptor = os.open(PRIVATE/'public-update.lock',os.O_RDWR|os.O_CREAT,0o600)
     fcntl.flock(descriptor,fcntl.LOCK_EX|fcntl.LOCK_NB)
     signal.signal(signal.SIGTERM,lambda *_:STOP.set())
     signal.signal(signal.SIGINT,lambda *_:STOP.set())
-    save(running=True,pid=os.getpid(),intervalSeconds=1800)
+    save(running=True,pid=os.getpid(),intervalSeconds=interval)
     try:
-        # Initial snapshot is published explicitly before this service starts.
-        while not STOP.wait(1800):
+        first = initial
+        while first or not STOP.wait(interval):
+            first = False
             try:
-                publish(sync=True)
+                publish(sync=True,follow_main=follow_main)
             except Exception:
                 save(error='update_failed_previous_public_snapshot_retained')
                 print('Update failed; previous public snapshot retained.',flush=True)
@@ -75,7 +81,7 @@ def run():
         os.close(descriptor)
 
 
-def background():
+def background(interval=1800, initial=False, follow_main=False):
     state=json.loads(STATE.read_text()) if STATE.exists() else {}
     if state.get('running') and state.get('pid'):
         try:
@@ -85,12 +91,15 @@ def background():
             pass
     log=os.open(PRIVATE/'public-update.log',os.O_APPEND|os.O_CREAT|os.O_WRONLY,0o600)
     try:
-        process=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),'run'],cwd=ROOT,stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+        args=[sys.executable,str(Path(__file__).resolve()),'run','--interval',str(interval)]
+        if initial:args.append('--initial-sync')
+        if follow_main:args.append('--follow-main')
+        process=subprocess.Popen(args,cwd=ROOT,stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
         try:
             process.wait(timeout=1)
             raise RuntimeError('startup_failed')
         except subprocess.TimeoutExpired:
-            print('Local public-data updater started; interval 30 minutes, current login session.')
+            print(f'Public-data updater started; interval {interval} seconds.')
     finally:
         os.close(log)
 
@@ -111,12 +120,16 @@ def main():
     os.umask(0o077)
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=['once','sync-and-publish','run','background','status','stop'])
+    parser.add_argument('--interval',type=int,default=1800,help='seconds between completed imports (minimum 60)')
+    parser.add_argument('--initial-sync',action='store_true',help='import immediately when starting the continuous worker')
+    parser.add_argument('--follow-main',action='store_true',help='fast-forward the dedicated server checkout before each import')
     args=parser.parse_args()
+    if args.interval<60:parser.error('interval must be at least 60 seconds')
     try:
         if args.action=='once':publish()
         elif args.action=='sync-and-publish':publish(sync=True)
-        elif args.action=='run':run()
-        elif args.action=='background':background()
+        elif args.action=='run':run(args.interval,args.initial_sync,args.follow_main)
+        elif args.action=='background':background(args.interval,args.initial_sync,args.follow_main)
         elif args.action=='stop':stop()
         else:
             state=json.loads(STATE.read_text()) if STATE.exists() else {}

@@ -1,0 +1,17 @@
+[Unit]
+Description=AFS anonymous map live updater
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/work/afs-live/site
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/python3 %h/work/afs-live/site/scripts/update_public.py run --interval 300 --initial-sync --follow-main
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

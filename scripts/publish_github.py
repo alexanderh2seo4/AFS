@@ -210,7 +210,7 @@ def audit_public_data(root):
 def push(directory, repo, branch, mcp=False):
     expected = f"https://github.com/{OWNER}/{repo}.git"
     remote = subprocess.run(["git", "remote", "get-url", "origin"], cwd=directory, text=True, capture_output=True, check=True).stdout.strip()
-    if remote != expected:
+    if remote not in {expected, f"git@github.com:{OWNER}/{repo}.git"}:
         raise PublishError("The repository origin does not match the expected GitHub destination.")
     count = audit_tracked(directory, mcp=mcp)
     subprocess.run(["git", "push", "origin", f"HEAD:{branch}"], cwd=directory, check=True, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})

@@ -208,4 +208,7 @@ $('residence-form').onsubmit=async e=>{
 };
 initMap();setMobileView('map');setRoute(state.kind);updateScope();loadPublic();
 if(location.hash)history.replaceState({},'',location.pathname+location.search);storage.remove('afs-token',true);storage.remove('afs-api');
-setInterval(()=>{if(state.connected&&state.chapter&&!document.hidden)reloadPublic()},5*60*1000);
+function refreshVisibleData(){if(state.connected&&state.chapter&&!document.hidden&&!$('refresh-button').disabled)reloadPublic()}
+setInterval(refreshVisibleData,60*1000);
+document.addEventListener('visibilitychange',refreshVisibleData);
+addEventListener('online',()=>state.connected?refreshVisibleData():loadPublic());
