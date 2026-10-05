@@ -130,4 +130,11 @@ dialog#residence-dialog{max-height:min(92svh,800px);overflow-y:auto}
 .contact-page .page-consent input{background:#fafcfd;border:1px solid #cdd9e3;border-radius:4px}
 .contact-page .form-message{min-height:20px}
 .contact-skip-link{display:block;text-align:center;margin-top:15px;padding:10px;color:var(--teal);font-size:14px}
-@media(max-width:760px){.contact-page{margin:18px 12px;padding:28px 20px}.contact-page h1{font-size:27px}.contact-form-link{display:inline-block;margin:10px 0 0}.contact-home-link{padding:9px 10px}}
+.site-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:28px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+.site-footer-links{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.site-footer a{color:var(--teal);text-decoration:none;font-weight:550}
+.site-footer a:hover{text-decoration:underline}
+.site-footer .inline-button{color:var(--teal);font-size:13px;font-weight:550;text-decoration:none;cursor:pointer}
+.site-footer .inline-button:hover{text-decoration:underline}
+.results-footer .contact-form-link{margin:0}
+@media(max-width:760px){.contact-page{margin:18px 12px;padding:28px 20px}.contact-page h1{font-size:27px}.contact-form-link{display:inline-block;margin:10px 0 0}.contact-home-link{padding:9px 10px}.site-footer{flex-direction:column;align-items:flex-start;gap:10px;margin-top:20px}}

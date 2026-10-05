@@ -38,12 +38,20 @@
         <section class="nearby" id="nearby-section" hidden><div class="section-label">IN DEINER NÄHE <span>Ungefähre Entfernung</span></div><div id="nearby-results"></div></section>
         <div class="list-heading"><h2 id="list-heading">Offene Interviews</h2><label><span class="sr-only">Sortieren</span><select id="sort-select"><option value="urgent">Dringend zuerst</option><option value="distance">Nächste zuerst</option><option value="date">Frist zuerst</option></select></label></div>
         <div id="results-list" aria-live="polite"><div class="empty-state"><div class="empty-icon" aria-hidden="true">⌖</div><h3>Unser Komitee auf einen Blick</h3><p>Wir laden den öffentlichen Datenstand für München.</p></div></div>
-        <div class="results-footer"><span id="updated-label">Noch keine Daten geladen</span><span>Quelle: AFSer.de</span></div>
+        <div class="results-footer"><span id="updated-label">Noch keine Daten geladen</span><a class="contact-form-link" href="../Kontaktformular/">Kontaktformular</a><span>Quelle: AFSer.de</span></div>
       </aside>
       <section class="map-panel" id="map-panel" aria-label="Interaktive Karte"><div id="map"></div><div class="map-top-note" id="map-top-note">Standorte als ungefähre Bereiche</div><button id="fit-map" class="map-fit" aria-label="Alle gefilterten Einträge auf der Karte anzeigen">Ausschnitt anpassen</button><div class="map-legend" id="map-legend"><span><i class="legend-dot regular"></i>Offen</span><span><i class="legend-dot urgent"></i>Dringend</span><span class="area-legend"><i></i>Ungefährer Bereich</span></div></section>
     </section>
     <p class="privacy-note">Wir zeigen keine Namen oder Hausadressen auf der Karte. Alle Details und die Anmeldung findest du nach dem Login auf AFSer.de. <button id="privacy-button">Datenschutz & Quellen</button> <a class="contact-form-link" href="../Kontaktformular/">Kontaktformular</a></p>
     <div class="scope-actions"><button id="show-all-button" class="show-all-button" type="button" aria-pressed="false" disabled>Alle verfügbaren anzeigen</button></div>
+    <footer class="site-footer">
+      <span>AFS Interkulturelle Begegnungen e.V. · Komitee München</span>
+      <div class="site-footer-links">
+        <a class="contact-form-link" href="../Kontaktformular/">Kontaktformular</a>
+        <button id="footer-privacy-button" type="button" class="inline-button">Datenschutz & Quellen</button>
+        <a href="https://www.afser.de/" target="_blank" rel="noopener noreferrer">AFSer.de</a>
+      </div>
+    </footer>
   </main>
   <dialog id="residence-dialog" aria-labelledby="residence-title">
     <form id="residence-form"><button type="button" class="dialog-close" id="residence-close" data-close aria-label="Schließen">×</button><p class="eyebrow" id="residence-eyebrow">DEIN WOHNORT</p><h2 id="residence-title">Wo wohnst du?</h2><p id="residence-intro">Eine Stadt oder Postleitzahl genügt. Wir wählen unser Komitee automatisch aus. Wenn nötig, kannst du die Auswahl über der Karte ändern.</p>
