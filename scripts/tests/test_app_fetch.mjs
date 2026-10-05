@@ -118,3 +118,16 @@ test('navigation sync updates returnees, brand and route links to canonical abso
   assert.equal(result.retHref, 'https://example.invalid/AFS/returnees/');
   assert.equal(result.contactHref, 'https://example.invalid/AFS/Kontaktformular/');
 });
+
+test('map view is preserved: record-filter onchange and data reload do not trigger fitMap', async () => {
+  const ui = app(async u => response(manifest()));
+  ui.run(`
+    let fitCount = 0;
+    const origFit = fitMap;
+    fitMap = () => { fitCount++; origFit(); };
+    globalThis.__getFitCount = () => fitCount;
+  `);
+  assert.equal(ui.get('record-filter').onchange, ui.run('render'));
+  await ui.run('reloadPublic()');
+  assert.equal(ui.run('globalThis.__getFitCount()'), 0);
+});
