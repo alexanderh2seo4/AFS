@@ -1,0 +1,17 @@
+[Unit]
+Description=AFS private visitor contact intake API
+After=network-online.target afs-live.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/work/afs-live/site
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/uv run --project %h/work/afs-live/site/mcp afser-data --data-dir %h/work/afs-live/site/.private-data serve --no-poll
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

@@ -12,7 +12,12 @@ const routes = {
   families: {eyebrow:'HOSTING · GASTFAMILIEN', title:'Wir geben dem Austausch ein Zuhause.',description:'Entdecke unsere aktiven Gastfamilien und offenen Homeinterviews in unserem Komitee.',unit:'aktive Gastfamilien',list:'Gastfamilien'}
 };
 const storage = {get(k,session=false){try{return (session?sessionStorage:localStorage).getItem(k)}catch{return null}},set(k,v,session=false){try{(session?sessionStorage:localStorage).setItem(k,v)}catch{}},remove(k,session=false){try{(session?sessionStorage:localStorage).removeItem(k)}catch{}}};
+function contactPromptVersion(){return contactConfig.noticeVersion||'initial-v1'}
+function hasCurrentContactSubmission(){return !!contactConfig.noticeVersion&&storage.get('afs-contact-submitted-v1')===contactConfig.noticeVersion}
+function hasContactDecision(){return hasCurrentContactSubmission()||storage.get('afs-contact-skipped-v1')===contactPromptVersion()}
 let locationChosen=false;
+let contactConfig={enabled:false,apiBaseUrl:'',purpose:'',retentionText:'',privacyContact:'',noticeVersion:''};
+let pendingSubmissionId=null;
 const state = {kind:routeFromPath(),chapters:[],records:[],chapter:'',residence:null,selectedPlace:null,updatedAt:null,request:0,placeRequest:0,connected:false,markers:new Map(),chapterData:new Map(),availableChapters:null,manifest:null,placeRows:null};
 try {const saved=JSON.parse(storage.get('afs-public-residence')||'null');if(saved&&typeof saved==='object'&&(typeof saved.city==='string'||typeof saved.chapterId==='string')){state.residence=saved;locationChosen=!!saved.city}}catch{}
 state.residence||=structuredClone(DEFAULT_RESIDENCE);state.chapter=storage.get('afs-public-chapter')||state.residence.chapterId||'';
@@ -38,7 +43,7 @@ const mapResizeObserver=new ResizeObserver(entries=>{
 mapResizeObserver.observe($('map-panel'));
 function initMap(){if(!globalThis.L){$('map').append(element('p','empty-state','Die Kartenbibliothek konnte nicht geladen werden. Die Liste bleibt verfügbar.'));return}map=L.map('map',{scrollWheelZoom:true,zoomControl:true,maxZoom:13,minZoom:2}).setView([state.residence?.location?.lat||48.1374,state.residence?.location?.lon||11.5755],8);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,referrerPolicy:'strict-origin-when-cross-origin',attribution:'© <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">OpenStreetMap</a>'}).addTo(map);layer=L.layerGroup().addTo(map);map.on('popupopen',({popup:detail})=>{const panel=detail.getElement(),mapPanel=$('map-panel'),bounds=mapPanel.getBoundingClientRect(),popupBounds=panel.getBoundingClientRect();mapPanel.append(panel);if(mobileLayout.matches){panel.classList.add('mobile-map-popup')}else{panel.classList.add('desktop-map-popup');const margin=12,left=Math.max(margin,Math.min(popupBounds.left-bounds.left,bounds.width-popupBounds.width-margin)),top=Math.max(margin,Math.min(popupBounds.top-bounds.top,bounds.height-popupBounds.height-margin));panel.style.left=left+'px';panel.style.top=top+'px';panel.style.right='auto';panel.style.bottom='auto'}});map.on('popupclose',()=>document.querySelectorAll('.record-card.selected').forEach(e=>e.classList.remove('selected')))}
 function setRoute(kind,push=false){state.kind=Object.hasOwn(routes,kind)?kind:'sending';const r=routes[state.kind];document.title='AFS Karte · '+(state.kind==='families'?'Gastfamilien':state.kind.charAt(0).toUpperCase()+state.kind.slice(1));$('eyebrow').textContent=r.eyebrow;$('page-title').textContent=r.title;$('page-description').textContent=r.description;$('record-unit').textContent=r.unit;$('list-heading').textContent=r.list;$('urgent-control').hidden=state.kind!=='sending'&&state.kind!=='families';$('urgent-only').checked=false;$('map-top-note').textContent=state.kind==='awayees'?'Nur Gastländer, keine Wohnadressen':'Standorte als ungefähre Bereiche';$('map-legend').hidden=state.kind==='awayees';$('sort-select').hidden=state.kind==='awayees';document.querySelectorAll('[data-route]').forEach(a=>{a.href=new URL(a.dataset.route+'/',root);a.classList.toggle('active',a.dataset.route===state.kind);if(a.dataset.route===state.kind)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});if(push)history.pushState({},'',new URL(state.kind+'/',root));configureRecordFilter();populateChapters();clearRecords();setMobileView('map');if(state.connected&&state.chapter)loadRecords()}
-function clearRecords(){state.selection=(state.selection||0)+1;recordRequests.cancel();state.request++;state.recordsScope=null;state.updatedAt=null;state.fetchError='';$('updated-label').textContent='';$('data-notice').hidden=true;map?.closePopup();state.records=[];state.markers.clear();layer?.clearLayers();$('record-count').textContent='–';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren();$('refresh-button').disabled=!state.connected||!state.chapter;if(!state.connected)renderEmpty('Öffentlicher Datenstand','Die anonymisierten Kartendaten werden von GitHub geladen.');else if(!state.chapter)renderEmpty('Welches Komitee?','Wähle deinen Wohnort oder unser Komitee, um passende Einträge zu sehen.');}
+function clearRecords(){state.selection=(state.selection||0)+1;recordRequests.cancel();state.request++;state.recordsScope=null;state.updatedAt=null;state.fetchError='';$('updated-label').textContent='';$('data-notice').hidden=true;map?.closePopup();state.records=[];state.markers.clear();layer?.clearLayers();$('record-count').textContent='–';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren();$('refresh-button').disabled=!state.connected||!state.chapter;if(!state.connected)renderEmpty('Unser Datenstand','Wir laden die anonymisierten Kartendaten von GitHub.');else if(!state.chapter)renderEmpty('Welches Komitee?','Wähle deinen Wohnort oder unser Komitee, um passende Einträge zu sehen.');}
 function renderEmpty(title,copy){const box=element('div','empty-state');box.append(element('div','empty-icon','⌖'),element('h3','',title),element('p','',copy));const btn=element('button','primary',state.chapter?'Aktualisieren':'Komitee auswählen');btn.onclick=!state.connected?loadPublic:!state.chapter?()=>$('chapter-select').focus():reloadPublic;box.append(btn);$('results-list').replaceChildren(box)}
 function populateChapters(){
   const makeOption=chapter=>{const option=element('option','',chapter.name);option.value=chapter.id;return option};
@@ -88,7 +93,7 @@ async function loadPublic(){
     const data=await request('/api/chapters',{signal:job.signal});if(!bootstrapRequests.isCurrent(job))return;
     state.chapters=data.chapters;await loadChapterAvailability(job.signal);if(!bootstrapRequests.isCurrent(job))return;state.connected=true;await restoreResidence();if(!bootstrapRequests.isCurrent(job))return;
     populateChapters();connectionState(true);
-    if(state.chapter)await loadRecords();else clearRecords();if(!locationChosen)openResidence()
+    if(state.chapter)await loadRecords();else clearRecords();if(!locationChosen&&hasCurrentContactSubmission())openResidence()
   }catch(e){if(!bootstrapRequests.isCurrent(job)||e.name==='AbortError')return;state.connected=false;clearRecords();populateChapters();renderEmpty('Datenstand nicht erreichbar',e.message);fetchFailed(e,false)}
   finally{if(bootstrapRequests.isCurrent(job))$('refresh-button').disabled=!state.connected||!state.chapter}
 }
@@ -102,13 +107,13 @@ async function reloadPublic(){
   }catch(e){if(!bootstrapRequests.isCurrent(job)||e.name==='AbortError')return;fetchFailed(e,!!state.updatedAt);if(!state.updatedAt){renderEmpty('Datenstand nicht erreichbar',e.message);$('record-count').textContent='–'}}
   finally{if(bootstrapRequests.isCurrent(job))$('refresh-button').disabled=!state.connected||!state.chapter}
 }
-function refreshStatus(){const time=new Date(state.manifest?.updatedAt),stale=Number.isFinite(time.valueOf())&&Date.now()-time.valueOf()>24*60*60*1000;$('data-notice').hidden=!state.fetchError&&!stale;$('data-notice').textContent=state.fetchError||'Dieser veröffentlichte Datenstand ist älter als 24 Stunden. Aktuelle Details findest du auf AFSer.';$('sync-info').textContent='Die Website lädt den zuletzt auf GitHub veröffentlichten anonymisierten Datenstand. Der lokale Importer kann aktualisierte Daten veröffentlichen; die Karte bleibt auch ohne ihn erreichbar.';}
+function refreshStatus(){const time=new Date(state.manifest?.updatedAt),stale=Number.isFinite(time.valueOf())&&Date.now()-time.valueOf()>24*60*60*1000;$('data-notice').hidden=!state.fetchError&&!stale;$('data-notice').textContent=state.fetchError||'Unser veröffentlichter Datenstand ist älter als 24 Stunden. Aktuelle Details findest du auf AFSer.';$('sync-info').textContent='Wir laden den zuletzt auf GitHub veröffentlichten anonymisierten Datenstand. Mit dem lokalen Importer können wir aktualisierte Daten veröffentlichen; unsere Karte bleibt auch ohne ihn erreichbar.';}
 async function loadRecords(){
   if(!state.connected||!state.chapter)return;
   const job=recordRequests.begin(),id=++state.request,kind=state.kind,chapter=state.chapter,scope=kind+':'+chapter;
   const hasPrevious=state.recordsScope===scope&&!!state.updatedAt;
   const current=()=>id===state.request&&recordRequests.isCurrent(job)&&state.kind===kind&&state.chapter===chapter;
-  if(!hasPrevious){map?.closePopup();layer?.clearLayers();state.markers.clear();state.records=[];state.updatedAt=null;state.recordsScope=null;state.fetchError='';$('updated-label').textContent='';$('data-notice').hidden=true;$('record-count').textContent='…';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren(element('div','empty-state','Einträge werden geladen …'))}
+  if(!hasPrevious){map?.closePopup();layer?.clearLayers();state.markers.clear();state.records=[];state.updatedAt=null;state.recordsScope=null;state.fetchError='';$('updated-label').textContent='';$('data-notice').hidden=true;$('record-count').textContent='…';$('urgent-count').hidden=true;$('nearby-section').hidden=true;$('results-list').replaceChildren(element('div','empty-state','Wir laden die Einträge …'))}
   $('refresh-button').disabled=true;
   try{
     const path='/api/records?'+new URLSearchParams({kind,chapter});let data;
@@ -168,16 +173,35 @@ async function restoreResidence(){
   }
   state.chapter='';
 }
-function openResidence(){
-  cancelPlaceSearch();state.selectedPlace=state.residence?.city?structuredClone(state.residence):null;
-  $('city-input').value=state.residence?.city||'';
-  $('residence-message').textContent='';showDialog('residence-dialog');
+function openResidence(intake=false,preserveInput=false){
+  const firstVisit=intake&&!hasContactDecision();
+  cancelPlaceSearch();if(!preserveInput){if(firstVisit){state.selectedPlace=null;$('city-input').value=''}else{state.selectedPlace=state.residence?.city?structuredClone(state.residence):null;$('city-input').value=state.residence?.city||''}}
+  $('contact-fields').hidden=!firstVisit;
+  for(const id of ['contact-name','contact-email','contact-phone','contact-consent'])$(id).required=firstVisit;
+  $('residence-eyebrow').textContent=firstVisit?'KONTAKTFORMULAR':'DEIN WOHNORT';
+  $('residence-title').textContent=firstVisit?'Willkommen':'Wo wohnst du?';
+  $('residence-intro').textContent=firstVisit?'Gib deine Kontaktdaten und deinen Wohnort ein, bevor du die Karte öffnest.':'Eine Stadt oder Postleitzahl genügt. Wir wählen unser Komitee automatisch aus. Wenn nötig, kannst du die Auswahl über der Karte ändern.';
+  $('residence-note').textContent=firstVisit?'Deine Kontaktdaten und dein ausgewählter Ort werden beim Absenden an den privaten AFS-Dienst gesendet.':'Dein Wohnort bleibt in diesem Browser. Wir fragen keine genaue Adresse ab.';
+  $('residence-submit').textContent=firstVisit?'Absenden und Karte öffnen':'Karte anzeigen';
+  $('residence-submit').disabled=firstVisit&&!contactConfig.enabled;
+  $('skip-contact-button').hidden=!firstVisit;
+  if($('residence-close'))$('residence-close').hidden=false;
+  $('residence-message').textContent=firstVisit&&!contactConfig.enabled?'Das Kontaktformular ist noch nicht eingerichtet. Bitte versuche es später erneut.':'';
+  $('contact-purpose').textContent=contactConfig.purpose?'Wir verwenden deine Angaben, um '+contactConfig.purpose+'.':'';
+  $('contact-retention').textContent=contactConfig.retentionText;
+  $('contact-privacy-copy').textContent=[contactConfig.purpose?'Zweck: '+contactConfig.purpose+'.':'',contactConfig.retentionText,contactConfig.privacyContact?'Datenschutzkontakt: '+contactConfig.privacyContact+'.':''].filter(Boolean).join(' ');
+  showDialog('residence-dialog');
 }
 function selectPlace(place){
   cancelPlaceSearch();state.selectedPlace=place;$('city-input').value=place.city;
-  $('residence-message').textContent=place.chapterId?'Ort gefunden. Dein Komitee wird automatisch ausgewählt.':'Ort gefunden. Du kannst dein Komitee anschließend über der Karte auswählen.';
+  $('residence-message').textContent=place.chapterId?'Ort gefunden. Unser Komitee wird automatisch ausgewählt.':'Ort gefunden. Du kannst unser Komitee anschließend über der Karte auswählen.';
 }
 $('residence-dialog').addEventListener('close',cancelPlaceSearch);
+if($('residence-close'))$('residence-close').onclick=()=>{if(!$('contact-fields').hidden&&!hasContactDecision())storage.set('afs-contact-skipped-v1',contactPromptVersion());$('residence-dialog').close()};
+$('residence-dialog').addEventListener('cancel',()=>{if(!$('contact-fields').hidden&&!hasContactDecision())storage.set('afs-contact-skipped-v1',contactPromptVersion())});
+$('skip-contact-button').onclick=()=>{storage.set('afs-contact-skipped-v1',contactPromptVersion());$('residence-dialog').close()};
+$('contact-privacy-button').onclick=()=>showDialog('privacy-dialog');
+$('privacy-dialog').addEventListener('close',()=>{if(!hasContactDecision())openResidence(true,true)});
 $('city-input').oninput=()=>{
   state.selectedPlace=null;cancelPlaceSearch();
   const query=$('city-input').value.trim(),id=state.placeRequest;
@@ -187,13 +211,14 @@ $('city-input').oninput=()=>{
     try{const places=await findPlaces(query);if(id!==state.placeRequest)return;
       $('city-options').replaceChildren(...places.map(place=>{const b=element('button','city-option',place.label||place.city);b.type='button';
         b.onclick=()=>selectPlace(place);return b}));
-      $('residence-message').textContent=places.length?'Bitte einen Ort aus der Liste wählen.':'Kein passender Ort gefunden. Prüfe die Schreibweise oder wähle dein Komitee direkt.';
-    }catch{if(id===state.placeRequest)$('residence-message').textContent='Ortsuche gerade nicht verfügbar. Bitte erneut versuchen oder dein Komitee direkt wählen.'}
+      $('residence-message').textContent=places.length?'Bitte einen Ort aus der Liste wählen.':'Kein passender Ort gefunden. Prüfe die Schreibweise oder wähle unser Komitee direkt.';
+    }catch{if(id===state.placeRequest)$('residence-message').textContent='Ortsuche gerade nicht verfügbar. Bitte erneut versuchen oder unser Komitee direkt wählen.'}
   },250);
 };
 $('residence-form').onsubmit=async e=>{
   e.preventDefault();const b=e.submitter,id=state.placeRequest;b.disabled=true;
   try{
+    const firstVisit=!$('contact-fields').hidden;
     let place=state.selectedPlace;
     if(!place&&$('city-input').value.trim()){
       const query=$('city-input').value.trim(),places=await findPlaces(query);
@@ -202,12 +227,33 @@ $('residence-form').onsubmit=async e=>{
     }
     if(id!==state.placeRequest)return;
     if(!place){$('residence-message').textContent='Bitte wähle deinen Ort aus der Vorschlagsliste.';return}
+    if(firstVisit){
+      if(!contactConfig.enabled||!contactConfig.apiBaseUrl||!contactConfig.noticeVersion){$('residence-message').textContent='Das Kontaktformular ist noch nicht eingerichtet. Bitte versuche es später erneut.';return}
+      if(!$('contact-consent').checked){$('residence-message').textContent='Bitte bestätige die Datenschutzhinweise.';return}
+      const endpoint=new URL(contactConfig.apiBaseUrl);endpoint.pathname=endpoint.pathname.replace(/\/$/,'')+'/api/contact';endpoint.search='';endpoint.hash='';
+      if(endpoint.protocol!=='https:'){ $('residence-message').textContent='Das Kontaktformular ist nur über eine sichere Verbindung verfügbar.';return }
+      pendingSubmissionId||=crypto.randomUUID();
+      const payload={submissionId:pendingSubmissionId,name:$('contact-name').value.trim(),email:$('contact-email').value.trim(),phone:$('contact-phone').value.trim(),postalCode:place.postalCode||'',city:place.city,interests:[...document.querySelectorAll('#contact-fields input[name="interests"]:checked')].map(input=>input.value),consent:true,consentVersion:contactConfig.noticeVersion,website:$('contact-website').value};
+      let response;
+      try{response=await fetch(endpoint,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})}catch{$('residence-message').textContent='Die Angaben konnten gerade nicht gesendet werden. Bitte versuche es erneut.';return}
+      if(!response.ok){$('residence-message').textContent=response.status===429?'Bitte warte kurz und versuche es erneut.':'Die Angaben konnten gerade nicht gesendet werden. Bitte versuche es erneut.';return}
+      storage.set('afs-contact-submitted-v1',contactConfig.noticeVersion);pendingSubmissionId=null;
+    }
     const chapter=place.chapterId||'';
     state.residence=place?{city:place.city,postalCode:place.postalCode,chapterId:chapter,location:place.location}:{chapterId:chapter};
-    locationChosen=true;storage.set('afs-public-residence',JSON.stringify(state.residence));storage.set('afs-public-chapter',chapter);state.chapter=chapter;$('chapter-select').value=chapter;updateScope();$('residence-dialog').close();clearRecords();fitMap();if(chapter)await loadRecords();else{renderEmpty('Komitee auswählen','Für deinen Wohnort ist noch kein Komitee bestätigt. Wähle es über der Karte.');$('chapter-select').focus()}
+    locationChosen=true;storage.set('afs-public-residence',JSON.stringify(state.residence));storage.set('afs-public-chapter',chapter);state.chapter=chapter;$('chapter-select').value=chapter;updateScope();$('residence-dialog').close();clearRecords();fitMap();if(chapter)await loadRecords();else{renderEmpty('Komitee auswählen','Für deinen Wohnort ist noch kein Komitee bestätigt. Wähle unser Komitee über der Karte.');$('chapter-select').focus()}
   }catch{$('residence-message').textContent='Ort konnte nicht gespeichert werden. Bitte erneut versuchen.'}finally{b.disabled=false}
 };
-initMap();setMobileView('map');setRoute(state.kind);updateScope();loadPublic();
+async function loadContactConfig(){
+  try{
+    const response=await fetch(new URL('assets/contact-config.json',root),{cache:'no-store',referrerPolicy:'no-referrer'});
+    if(!response.ok)throw Error();
+    const config=await response.json(),endpoint=new URL(config.apiBaseUrl||'');
+    if(config.enabled===true&&endpoint.protocol==='https:'&&!endpoint.username&&!endpoint.password&&!endpoint.search&&!endpoint.hash&&config.purpose&&config.retentionText&&config.privacyContact&&config.noticeVersion){contactConfig={...contactConfig,...config,apiBaseUrl:endpoint.origin}}
+  }catch{}
+  if(!hasContactDecision())openResidence(true);
+}
+initMap();setMobileView('map');setRoute(state.kind);updateScope();loadContactConfig();loadPublic();
 if(location.hash)history.replaceState({},'',location.pathname+location.search);storage.remove('afs-token',true);storage.remove('afs-api');
 function refreshVisibleData(){if(state.connected&&state.chapter&&!document.hidden&&!$('refresh-button').disabled)reloadPublic()}
 setInterval(refreshVisibleData,60*1000);

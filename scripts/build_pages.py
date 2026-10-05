@@ -15,6 +15,7 @@ for route, (eyebrow, title, description) in routes.items():
     for name in routes:
         page=page.replace('href="'+name+'/"','href="../'+name+'/"')
     page=page.replace('href="returnees/"','href="../returnees/"')
+    page=page.replace('href="Kontaktformular/"','href="../Kontaktformular/"')
     page=page.replace('>SENDING · HOMEINTERVIEWS</p>', '>'+eyebrow+'</p>', 1)
     page=page.replace('<h1 id="page-title">Engagiere dich bei uns!</h1>', '<h1 id="page-title">'+title+'</h1>', 1)
     page=page.replace('<p id="page-description">Finde offene Homeinterviews in unserem Komitee und melde dich direkt auf AFSer an.</p>', '<p id="page-description">'+description+'</p>', 1)

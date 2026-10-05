@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#102b46"><meta name="referrer" content="no-referrer">
+  <meta name="description" content="Kontaktformular für die AFS-Karte.">
+  <title>Kontaktformular · AFS Karte</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/app.css">
+  <script type="module" src="../assets/contact-page.js"></script>
+</head>
+<body class="contact-page-body">
+  <header class="header">
+    <a class="brand" href="../" aria-label="Zur AFS-Karte"><img class="brand-logo" src="../assets/afs-logo.svg" alt="AFS" width="64" height="43"><span>Karte</span></a>
+    <a class="contact-home-link" href="../">Zur Karte</a>
+  </header>
+  <main class="contact-page">
+    <p class="eyebrow">KONTAKTFORMULAR</p>
+    <h1>Wie können wir dich erreichen?</h1>
+    <p class="contact-page-intro">Gib deinen Namen, deine Kontaktdaten und deinen Ort an. Deine Interessen kannst du freiwillig auswählen. Nach dem Absenden kommst du zurück zur Karte.</p>
+    <form id="contact-page-form">
+      <label for="page-name">Name</label><input id="page-name" name="name" autocomplete="name" maxlength="120" required>
+      <label for="page-email">E-Mail-Adresse</label><input id="page-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+      <label for="page-phone">Telefonnummer</label><input id="page-phone" name="phone" type="tel" autocomplete="tel" maxlength="32" required>
+      <label for="page-city">Postleitzahl oder Stadt</label><input id="page-city" name="cityLookup" autocomplete="off" placeholder="z. B. 80331 oder Berlin" maxlength="80" required aria-describedby="page-city-help">
+      <p id="page-city-help" class="small-note">Wähle einen Ort aus den Vorschlägen, damit Postleitzahl und Stadt zusammenpassen.</p>
+      <div id="page-city-options" class="city-options" aria-live="polite"></div>
+      <fieldset class="interest-options page-interest-options">
+        <legend>Wofür interessierst du dich? (freiwillig, Mehrfachauswahl)</legend>
+        <label><input type="checkbox" name="interests" value="sending_interviews"> <span>Sending-Interviews</span></label>
+        <label><input type="checkbox" name="interests" value="hosting"> <span>Hosting und Gastfamilien</span></label>
+        <label><input type="checkbox" name="interests" value="exchange"> <span>Austauschjahr</span></label>
+        <label><input type="checkbox" name="interests" value="other"> <span>Sonstiges</span></label>
+      </fieldset>
+      <p id="page-purpose" class="small-note"></p>
+      <label class="contact-consent page-consent"><input id="page-consent" type="checkbox" required><span>Ich stimme der beschriebenen Speicherung meiner Angaben zu.</span></label>
+      <p id="page-retention" class="small-note"></p>
+      <p class="small-note">Deine Angaben werden über eine verschlüsselte Verbindung an den privaten AFS-Dienst gesendet.</p>
+      <label class="contact-honeypot" aria-hidden="true">Bitte leer lassen<input id="page-website" tabindex="-1" autocomplete="off"></label>
+      <p id="page-message" class="form-message" role="status" aria-live="polite"></p>
+      <button id="page-submit" class="primary wide" type="submit">Absenden und zur Karte</button>
+      <a class="contact-skip-link" href="../">Ohne Absenden zur Hauptseite</a>
+    </form>
+  </main>
+</body>
+</html>

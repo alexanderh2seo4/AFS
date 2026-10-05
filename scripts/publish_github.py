@@ -17,9 +17,10 @@ import zipfile
 import xml.etree.ElementTree as ET
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-OWNER = "alexanderh2seo4"
+OWNER = "AFS-MUC"
 SITE_REPO = "AFS"
 MCP_REPO = "afser-mcp"
 
@@ -72,8 +73,13 @@ class GitHub:
             raise PublishError("GitHub API is unavailable; check the network and retry.") from None
 
     def check_owner(self):
-        if self.request("GET", "/user").get("login") != OWNER:
-            raise PublishError("The Git credential helper is signed in to a different GitHub account.")
+        login = self.request("GET", "/user").get("login")
+        if login == OWNER:
+            return
+        membership = self.request("GET", f"/user/memberships/orgs/{OWNER}", missing_ok=True)
+        if membership and membership.get("state") == "active" and membership.get("role") in {"admin", "member"}:
+            return
+        raise PublishError("The Git credential helper is signed in to an account without required access.")
 
 
 def repository_summary(repo):
@@ -118,7 +124,9 @@ def status(api):
 def ensure_mcp_repo(api):
     repo = api.request("GET", f"/repos/{OWNER}/{MCP_REPO}", missing_ok=True)
     if repo is None:
-        repo = api.request("POST", "/user/repos", {
+        user_login = api.request("GET", "/user").get("login")
+        create_path = "/user/repos" if OWNER == user_login else f"/orgs/{OWNER}/repos"
+        repo = api.request("POST", create_path, {
             "name": MCP_REPO,
             "description": "Local AFSER sync, anonymous volunteer map API and MCP server; code only",
             "private": False,
@@ -171,9 +179,33 @@ def audit_tracked(directory, mcp=False):
             blocked.append(filename)
     if blocked:
         raise PublishError("Refusing to publish private or unexpected tracked paths: " + ", ".join(blocked))
+    if not mcp:
+        audit_contact_config(directory / "docs/assets/contact-config.json")
     if not mcp and (directory / 'docs/data').exists():
         audit_public_data(directory / 'docs/data')
     return len(files)
+
+
+def audit_contact_config(path):
+    if not path.exists():
+        return
+    try:
+        data = json.loads(path.read_text())
+        fields = {"enabled", "apiBaseUrl", "purpose", "retentionText", "privacyContact", "noticeVersion"}
+        if set(data) != fields or type(data["enabled"]) is not bool:
+            raise ValueError()
+        for field, limit in (("apiBaseUrl", 500), ("purpose", 500), ("retentionText", 1000), ("privacyContact", 254), ("noticeVersion", 80)):
+            if not isinstance(data[field], str) or len(data[field]) > limit:
+                raise ValueError()
+        endpoint = data["apiBaseUrl"]
+        if endpoint:
+            parsed = urlsplit(endpoint)
+            if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.path not in {"", "/"} or parsed.query or parsed.fragment or "*" in endpoint:
+                raise ValueError()
+        if data["enabled"] and (not endpoint or not all(data[field].strip() for field in ("purpose", "retentionText", "privacyContact", "noticeVersion"))):
+            raise ValueError()
+    except Exception:
+        raise PublishError("The public contact configuration failed its privacy audit.") from None
 
 
 RETURN_HEADERS = ["Anonymer Schlüssel", "Austauschjahr", "AFS-Seminar 1", "AFS-Seminar 2", "Alle Camps absolviert"]
