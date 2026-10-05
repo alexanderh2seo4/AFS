@@ -17,12 +17,12 @@
   </header>
   <main>
     <section class="page-heading">
-      <div><p class="eyebrow" id="eyebrow">SENDING · HOMEINTERVIEWS</p><h1 id="page-title">Engagiere dich!</h1><p id="page-description">Finde offene Homeinterviews in deiner Nähe und melde dich direkt auf AFSer an.</p></div>
+      <div><p class="eyebrow" id="eyebrow">HOSTING · HOSTEES</p><h1 id="page-title">Unsere Hostees aus aller Welt.</h1><p id="page-description">Unsere aktiven Gastschüler*innen – anonymisiert und mit direktem Link zu AFSer.</p></div>
       <button id="residence-button" class="location-button"><span aria-hidden="true">⌖</span><span id="residence-label">München · Standard</span><span class="edit-label">Ändern</span></button>
     </section>
     <section class="toolbar" aria-label="Karte filtern">
       <label class="chapter-picker"><span>Komitee</span><select id="chapter-select" disabled><option value="">Bitte auswählen</option></select></label>
-      <div class="scope-note" id="scope-note">Wähle deinen Wohnort oder dein Komitee.</div>
+      <div class="scope-note" id="scope-note">Wähle deinen Wohnort oder unser Komitee.</div>
       <label class="record-filter" id="record-filter-control">Anzeige <select id="record-filter"></select></label>
       <label class="urgent-filter" id="urgent-control"><input id="urgent-only" type="checkbox">Nur dringend</label>
       <button id="refresh-button" class="subtle-button" disabled aria-label="Daten aktualisieren">↻ <span>Aktualisieren</span></button>
@@ -37,7 +37,7 @@
         <div class="result-summary"><div><strong id="record-count">–</strong><span id="record-unit">offene Interviews</span></div><span class="urgent-count" id="urgent-count" hidden></span></div>
         <section class="nearby" id="nearby-section" hidden><div class="section-label">IN DEINER NÄHE <span>Ungefähre Entfernung</span></div><div id="nearby-results"></div></section>
         <div class="list-heading"><h2 id="list-heading">Offene Interviews</h2><label><span class="sr-only">Sortieren</span><select id="sort-select"><option value="urgent">Dringend zuerst</option><option value="distance">Nächste zuerst</option><option value="date">Frist zuerst</option></select></label></div>
-        <div id="results-list" aria-live="polite"><div class="empty-state"><div class="empty-icon" aria-hidden="true">⌖</div><h3>Dein Komitee auf einen Blick</h3><p>Der öffentliche Datenstand für München wird geladen.</p></div></div>
+        <div id="results-list" aria-live="polite"><div class="empty-state"><div class="empty-icon" aria-hidden="true">⌖</div><h3>Unser Komitee auf einen Blick</h3><p>Der öffentliche Datenstand für München wird geladen.</p></div></div>
         <div class="results-footer"><span id="updated-label">Noch keine Daten geladen</span><span>Quelle: AFSer.de</span></div>
       </aside>
       <section class="map-panel" id="map-panel" aria-label="Interaktive Karte"><div id="map"></div><div class="map-top-note" id="map-top-note">Standorte als ungefähre Bereiche</div><button id="fit-map" class="map-fit" aria-label="Alle gefilterten Einträge auf der Karte anzeigen">Ausschnitt anpassen</button><div class="map-legend" id="map-legend"><span><i class="legend-dot regular"></i>Offen</span><span><i class="legend-dot urgent"></i>Dringend</span><span class="area-legend"><i></i>Ungefährer Bereich</span></div></section>
