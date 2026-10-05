@@ -7,7 +7,7 @@ Public anonymous volunteer maps on GitHub Pages, with a separate private local A
 - `/hostees/`: active hosted students, with approximate location areas and source links.
 - `/families/`: active host families and Hosting homeinterviews.
 
-München loads by default, without a login or a location dialog. Visitors can change their residence, select a chapter, or explicitly select **Alle Komitees**. Only the selected chapter file is fetched by default. Residence preferences remain in the browser. The default distance reference is Munich's public city centroid, not a visitor's detected location.
+München loads by default, without a login or a location dialog. Visitors can change their residence, select a chapter, or choose **Alle verfügbaren anzeigen** to see all available records across committees. This also clears the urgency filter; the selected scope is remembered in the browser. Only the selected chapter file is fetched by default. Residence preferences remain in the browser. The default distance reference is Munich's public city centroid, not a visitor's detected location.
 
 ## Public data and private source
 
@@ -43,7 +43,7 @@ python3 scripts/update_public.py once
 
 ## Source coverage
 
-The importer uses AFSer's authenticated read-only APIs and the interview task board. It checks list completeness, follows all board pages, partitions capped student lists by chapter and source status/year, and verifies open interview roles. The nationwide student list is covered in full. All source fields returned by supported endpoints remain local; only relevant active records enter the public map.
+The importer uses AFSer's authenticated read-only APIs and the interview task board. It checks list completeness, follows all board pages, partitions capped student lists by chapter and source status/year, and verifies open interview roles. Student-list completeness is checked within the current AFSer account’s accessible scope. Sending covers Germany; participant and hosting records currently returned by the account cover Süd. All source fields returned by supported endpoints remain local; only relevant active records enter the public map.
 
 The optional historical interview API returns only 2,000 of 4,489 records and exposes no usable pagination. This limitation is recorded in the local coverage manifest; it does not limit the fully traversed actionable interview board.
 
