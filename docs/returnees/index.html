@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#102b46">
+  <meta name="referrer" content="no-referrer"><meta name="description" content="Anonymisierte Returnee-Übersicht nach Austauschjahr und AFS-Seminarstatus.">
+  <title>AFS Returnees</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/app.css"><link rel="stylesheet" href="../assets/returnees.css">
+  <script type="module" src="../assets/returnees.js"></script>
+</head>
+<body class="returnees-page">
+  <header class="header">
+    <a class="brand" href="../" aria-label="AFS Karte Startseite"><img class="brand-logo" src="../assets/afs-logo.svg" alt="AFS" width="64" height="43"><span>Karte</span></a>
+    <nav aria-label="Bereiche"><a href="../sending/">Sending</a><a href="../hopees/">Hopees</a><a href="../hostees/">Hostees</a><a href="../families/">Gastfamilien</a><a class="active" href="./" aria-current="page">Returnees</a></nav>
+    <div class="connection" id="connection"><span class="connection-dot"></span><span id="connection-label">Datenstand laden</span></div>
+  </header>
+  <main class="returnees-main">
+    <section class="page-heading">
+      <div><p class="eyebrow">SENDING · RETURNEES</p><h1>Unsere Returnees</h1><p>Nach Austauschjahr sortierbar, mit dem Status der beiden AFS-Seminare.</p></div>
+      <a class="primary returnees-download" href="../data/returnees.xlsx" id="download-current" download>Excel-Tabelle herunterladen</a>
+    </section>
+
+    <section class="returnee-controls" aria-label="Returnees filtern und sortieren">
+      <label for="year-select">Austauschjahr<select id="year-select"><option value="">Alle Jahre</option></select></label>
+      <label class="returnee-checkbox"><input id="show-all" type="checkbox"> Alle Returnees anzeigen</label>
+      <label for="sort-select">Sortierung<select id="sort-select"><option value="year-desc">Neuestes Jahr zuerst</option><option value="year-asc">Ältestes Jahr zuerst</option></select></label>
+    </section>
+
+    <section class="returnee-summary" aria-live="polite">
+      <p><strong id="visible-count">–</strong><span id="visible-label">unvollständige Returnees</span></p>
+      <span id="total-count">Daten werden geladen</span>
+      <span id="updated-label"></span>
+    </section>
+    <p id="load-error" class="returnee-error" role="status" hidden></p>
+
+    <div class="returnee-table-wrap">
+      <table class="returnee-table">
+        <caption class="sr-only">Anonymisierte Returnees nach Austauschjahr und AFS-Seminarstatus</caption>
+        <thead><tr><th scope="col">Anonymer Schlüssel</th><th scope="col">Austauschjahr</th><th scope="col">AFS-Seminar 1</th><th scope="col">AFS-Seminar 2</th><th scope="col">Alle Camps absolviert</th></tr></thead>
+        <tbody id="returnee-rows"><tr><td colspan="5" class="returnee-empty">Returnee-Daten werden geladen.</td></tr></tbody>
+      </table>
+    </div>
+
+    <section class="returnee-notes">
+      <p>Ein AFS-Seminar zählt als absolviert, wenn AFSer das entsprechende Seminarfeld ausgefüllt hat. Namen, Kontaktdaten und Geburtsdaten werden nicht veröffentlicht.</p>
+      <p>Die Übersicht enthält nur Returnees, die mit dem verwendeten AFSer-Zugang erreichbar sind. Dieser Datenzugang deckt derzeit Süd ab und ist kein bundesweit vollständiges Register.</p>
+    </section>
+    <section class="returnee-archive" aria-labelledby="archive-title">
+      <div><h2 id="archive-title">Monatliche GitHub-Sicherungen</h2><p>Der elrsisbest-Updater legt pro Monat nach einem erfolgreichen Import eine unveränderliche Excel-Sicherung im GitHub-Repository ab.</p></div>
+      <div id="archive-links" class="archive-links"><span>Archiv wird geladen.</span></div>
+    </section>
+    <footer class="returnee-footer"><span>Quelle: AFSer.de</span><span id="refresh-label">Automatische Aktualisierung wird geladen.</span></footer>
+  </main>
+</body>
+</html>

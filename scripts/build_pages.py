@@ -8,5 +8,6 @@ for route in ['sending','hopees','hostees','families']:
     page=source.replace('="assets/','="../assets/').replace('href="./"','href="../"')
     for name in ['sending','hopees','hostees','families']:
         page=page.replace('href="'+name+'/"','href="../'+name+'/"')
+    page=page.replace('href="returnees/"','href="../returnees/"')
     (folder/'index.html').write_text(page)
-print('Built four GitHub Pages routes; no dataset included.')
+print('Built four map routes; the returnee dataset page is maintained separately.')
