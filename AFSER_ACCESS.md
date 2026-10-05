@@ -26,6 +26,6 @@ The file contains a plaintext password and is local only. It was verified with o
 
 ## Repository
 
-<https://github.com/alexanderh2seo4/AFS>
+<https://github.com/AFS-MUC/AFS>
 
 This document records the route and setup instructions only. The password and authenticated browser session are not stored in GitHub.

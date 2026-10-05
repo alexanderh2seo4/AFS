@@ -31,7 +31,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 PRIVATE = ROOT / ".private-data"
 LABEL = "de.afser.maps.local"
-WEBSITE = "https://alexanderh2seo4.github.io/AFS/"
+WEBSITE = "https://afs-muc.github.io/AFS/"
 TUNNEL_PATTERN = re.compile(r"https://[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com")
 STATE = PRIVATE / "remote-state.json"
 STOP = threading.Event()

@@ -3,7 +3,7 @@
 Public anonymous volunteer maps on GitHub Pages, with a separate private local AFSer importer and MCP server.
 
 - `/sending/`: published Sending homeinterviews, including open and picked slots, urgent highlighting, nearby suggestions and verified AFSer project links. Filters offer open slots, picked interviews, and pickups detected in the last 30 days.
-- `/hopees/`: outgoing students currently abroad by default, grouped by destination country. The filter can show preparation or all current outgoing participants.
+- `/awayees/`: outgoing students currently abroad by default, grouped by destination country. The filter can show preparation or all current outgoing participants.
 - `/hostees/`: active hosted students, with approximate location areas and source links.
 - `/families/`: active host families and Hosting homeinterviews.
 - `/returnees/`: pseudonymous Returnees, filtered by default to people whose two AFS seminars are not both marked complete. The page can show all Returnees together or filter and sort by exchange year, and it links to the current Excel table and monthly snapshots.
@@ -12,13 +12,13 @@ The map opens by default, including on phones. On the first visit, visitors choo
 
 ## Public data and private source
 
-`docs/data/` deliberately contains the approved anonymous static projection: opaque IDs, chapter, public city/country labels, status, urgency, deadline, approximate coordinates and AFSer links. It contains no names, contact details, household addresses, source payloads, login credentials or access tokens. Returnee files contain only a keyed pseudonym, exchange year and whether each of the two AFS seminar fields is populated; they cover only records available to the configured AFSer account, currently Süd, not a nationwide register. Every home location displays a **1 km radius** circle around a stable randomly shifted public postal-area centroid. This is not a confirmed home address or a claim that the household lies inside that circle. Hopees show country points only. Unknown locations are never guessed; unassigned open interviews appear in the All list without a map point.
+`docs/data/` deliberately contains only approved anonymous projections. Map records use opaque IDs, chapter, public city/country labels, status, urgency, deadline, approximate coordinates and AFSer links. Returnee files contain a keyed pseudonym, exchange year and whether each of the two AFS seminar fields is populated. They contain no names, contact details, dates of birth, household addresses, source payloads, login credentials or access tokens. Returnees are limited to records available to the configured AFSer account, currently Süd; they are not a Germany-wide register. Every home location displays a **1 km radius** circle around a stable randomly shifted public postal-area centroid. This is not a confirmed home address or a claim that the household lies inside that circle. Awayees show country points only. Unknown locations are never guessed; unassigned open interviews appear in the All list without a map point.
 
 The complete source responses and SQLite dataset remain only in the ignored local `.private-data/` directory with owner-only permissions. The separate `mcp/` code repository contains the importer, MCP tools and audited public export command. Raw source payloads have no HTTP or MCP read endpoint. AFSer still requires its own login to view details or join interview teams.
 
 GitHub Pages serves both code and anonymous data. Visitors do not need an invitation, a tunnel or this computer online. The previous private tunnel service has been stopped.
 
-Sending source links open verified signup project pages. Hopees, Hostees and family links open verified AFSer lists; AFSer's own saved chapter setting may require selecting the committee there. No unverified individual participant permalink is invented.
+Sending source links open verified signup project pages. Awayees, Hostees and family links open verified AFSer lists; AFSer's own saved chapter setting may require selecting the committee there. No unverified individual participant permalink is invented.
 
 ## Automatic publication
 

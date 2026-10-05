@@ -6,7 +6,7 @@ const response = data => new Response(JSON.stringify(data), {headers:{'content-t
 const manifest = time => ({version:1,updatedAt:time,chapters:[{id:'MUC',name:'München'},{id:'FRE',name:'Freiburg'}],defaultChapterId:'MUC'});
 const t1 = '2026-10-05T05:00:00Z', t2 = '2026-10-05T06:00:00Z';
 const record = (chapter='MUC') => ({id:'a'.repeat(20),kind:'sending',chapterId:chapter,status:'open',urgent:false,sourceUrl:'https://www.afser.de/ereignis-liste/avtproject/42.html'});
-const chapter = (time=t1,id='MUC') => ({updatedAt:time,chapter:id,records:{sending:[record(id)],hopees:[],hostees:[],families:[]}});
+const chapter = (time=t1,id='MUC') => ({updatedAt:time,chapter:id,records:{sending:[record(id)],awayees:[],hostees:[],families:[]}});
 const deferred = () => {let resolve; const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 
 test('offline, HTTP errors, HTML200 and broken JSON never become an empty dataset',async()=>{
@@ -64,10 +64,10 @@ test('geography must match the published generation and contain valid chapter co
 });
 
 test('committee availability comes from validated records per section and reuses the aggregate',async()=>{
-  const all={...chapter(t1,'all'),records:{sending:[record('MUC'),{...record('FRE'),id:'b'.repeat(20)},{...record('unassigned'),id:'c'.repeat(20)}],hopees:[],hostees:[{...record('FRE'),id:'d'.repeat(20),kind:'hostees'}],families:[]}};
+  const all={...chapter(t1,'all'),records:{sending:[record('MUC'),{...record('FRE'),id:'b'.repeat(20)},{...record('unassigned'),id:'c'.repeat(20)}],awayees:[],hostees:[{...record('FRE'),id:'d'.repeat(20),kind:'hostees'}],families:[]}};
   const reads=[];const store=publicDataStore('https://example.invalid/AFS/',{fetchImpl:async url=>{reads.push(String(url));return response(String(url).includes('manifest')?manifest(t1):all)}});
   await store.refresh();
-  assert.deepEqual(await store.availableChapterIds(),{sending:['MUC','FRE','unassigned'],hopees:[],hostees:['FRE'],families:[]});
+  assert.deepEqual(await store.availableChapterIds(),{sending:['MUC','FRE','unassigned'],awayees:[],hostees:['FRE'],families:[]});
   await store.availableChapterIds();await store.records('sending','all');
   assert.equal(reads.filter(url=>url.includes('/chapters/')).length,1);
 });

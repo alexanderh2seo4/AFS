@@ -1,6 +1,9 @@
 # Local authentication secrets and private login verification
 .afser-password
 afser-login-confirmed.png
+*.pdf
+Info_Einrichtung_KomiteeMails.pdf
+imapsend.md
 
 # Data, sessions, logs and the separately versioned MCP service stay local.
 .private-data/

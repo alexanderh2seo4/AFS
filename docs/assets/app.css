@@ -49,7 +49,8 @@
   .leaflet-popup-content{min-width:0;max-width:min(260px,calc(100vw - 100px));margin:16px!important;overflow-wrap:anywhere}
   .leaflet-container a.leaflet-popup-close-button{width:44px;height:44px;line-height:44px;font-size:24px}
   .leaflet-popup-content-wrapper{max-height:min(460px,55svh);overflow:auto}
-  .map-panel:has(.leaflet-popup) .leaflet-control-zoom{visibility:hidden}
+  .map-panel:has(.leaflet-popup) .leaflet-top.leaflet-left{top:auto;right:12px;bottom:12px;left:auto}
+  .map-panel:has(.leaflet-popup) .leaflet-control-zoom{visibility:visible;margin-top:0!important}
   .privacy-note{font-size:12px;margin-top:16px}
   .privacy-note button{display:inline-block;min-height:44px;margin-left:0;padding:8px 0}
   .result-summary{padding:16px;gap:8px;flex-wrap:wrap}
@@ -96,7 +97,37 @@
 .show-all-button[aria-pressed="true"]{background:#e9f6f3;border-color:#bde1dd}
 @media(max-width:760px){.show-all-button{min-height:40px}}
 
-@media(min-width:761px){.map-panel>.desktop-map-popup{position:absolute!important;transform:none!important;margin:0!important;z-index:700!important}.desktop-map-popup .leaflet-popup-tip-container{display:none}.desktop-map-popup .leaflet-popup-content-wrapper{max-height:min(460px,calc(100% - 52px));overflow:auto}}
-
 @media(max-width:760px){header nav{grid-template-columns:repeat(5,minmax(0,1fr))}header nav a{padding:10px 2px;font-size:clamp(10px,3.2vw,13px)}}
 @media(min-width:761px) and (max-width:940px){header{gap:12px}header nav a{padding-left:8px;padding-right:8px;font-size:13px}}
+
+@media(min-width:761px){.map-panel>.desktop-map-popup{position:absolute!important;transform:none!important;margin:0!important;z-index:700!important}.desktop-map-popup .leaflet-popup-tip-container{display:none}.desktop-map-popup .leaflet-popup-content-wrapper{max-height:min(460px,calc(100% - 52px));overflow:auto}}
+[hidden]{display:none!important}
+/* Contact intake fields share the existing residence picker for first-visit setup. */
+dialog#residence-dialog{max-height:min(92svh,800px);overflow-y:auto}
+.contact-fields{border:0;border-top:1px solid var(--line);margin:18px 0 0;padding:14px 0 0;min-width:0}
+.contact-fields legend{font-size:15px;font-weight:700;padding:0 8px 0 0}
+.contact-fields label{margin-top:14px}
+.contact-consent{display:flex!important;align-items:flex-start;gap:10px;font-weight:450!important;line-height:1.5}
+.contact-consent input{flex:0 0 18px;width:18px;height:18px;margin:2px 0 0;accent-color:var(--teal)}
+.inline-button{display:inline;background:none;padding:0;color:var(--teal);text-decoration:underline;font:inherit}
+.contact-fields .small-note{margin-top:10px}
+.contact-honeypot{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}
+.interest-options{border:1px solid var(--line);border-radius:8px;padding:14px 14px 12px;margin:18px 0 6px;min-width:0}
+.interest-options legend{font-size:13px;font-weight:700;padding:0 6px}
+.interest-options label{display:flex!important;align-items:flex-start;gap:10px;margin:9px 0!important;font-size:14px;font-weight:450!important;line-height:1.45}
+.interest-options input{flex:0 0 18px;width:18px!important;height:18px;margin:1px 0 0;accent-color:var(--teal)}
+.contact-form-link{margin-left:12px}
+.contact-page-body{min-height:100vh;background:#f4f7fb}
+.contact-home-link{margin-left:auto;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 14px;border:1px solid #ffffff40;border-radius:7px}
+.contact-home-link:hover{background:#ffffff16}
+.contact-page{max-width:760px;margin:46px auto;padding:42px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 3px 16px #102b4606}
+.contact-page h1{font-size:32px;line-height:1.2;letter-spacing:-1px;margin:0 0 10px}
+.contact-page-intro{font-size:15px;line-height:1.65;color:var(--muted);margin:0 0 24px}
+.contact-page form>label:not(.contact-consent):not(.contact-honeypot){display:block;font-size:14px;font-weight:650;margin:18px 0 8px}
+.contact-page input:not([type="checkbox"]){width:100%;background:#fafcfd;border:1px solid #cdd9e3;border-radius:7px;padding:12px;color:var(--navy);font-size:16px}
+.contact-page .page-interest-options{margin:24px 0 14px}
+.contact-page .page-consent{margin:18px 0 8px}
+.contact-page .page-consent input{background:#fafcfd;border:1px solid #cdd9e3;border-radius:4px}
+.contact-page .form-message{min-height:20px}
+.contact-skip-link{display:block;text-align:center;margin-top:15px;padding:10px;color:var(--teal);font-size:14px}
+@media(max-width:760px){.contact-page{margin:18px 12px;padding:28px 20px}.contact-page h1{font-size:27px}.contact-form-link{display:inline-block;margin:10px 0 0}.contact-home-link{padding:9px 10px}}

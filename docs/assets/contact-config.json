@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "apiBaseUrl": "https://kimai.tailb58b58.ts.net",
+  "purpose": "Kontaktaufnahme für ehrenamtliches Engagement beim AFS Komitee München",
+  "retentionText": "Deine Angaben werden vertraulich behandelt und ausschließlich im privaten Komitee-Repository für die Kontaktaufnahme gespeichert.",
+  "privacyContact": "kontakt@muc.afser.de",
+  "noticeVersion": "2026-10-v1"
+}

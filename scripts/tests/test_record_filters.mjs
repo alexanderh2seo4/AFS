@@ -12,7 +12,7 @@ test('open slots and picked interviews remain distinct, with honest recent dates
 });
 test('sendees default to abroad, with selectable preparation and combined views',()=>{
   const sendees=[{status:'active'},{status:'pending'}];
-  assert.deepEqual(visibleRecords(sendees,'hopees','active'),[sendees[0]]);
-  assert.deepEqual(visibleRecords(sendees,'hopees','pending'),[sendees[1]]);
-  assert.equal(visibleRecords(sendees,'hopees','all').length,2);
+  assert.deepEqual(visibleRecords(sendees,'awayees','active'),[sendees[0]]);
+  assert.deepEqual(visibleRecords(sendees,'awayees','pending'),[sendees[1]]);
+  assert.equal(visibleRecords(sendees,'awayees','all').length,2);
 });

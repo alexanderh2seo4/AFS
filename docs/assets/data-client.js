@@ -1,5 +1,5 @@
 // Fetch only the published anonymous projection. No credentials or private store.
-const KINDS = ['sending', 'hopees', 'hostees', 'families'];
+const KINDS = ['sending', 'awayees', 'hostees', 'families'];
 const RECORD_FIELDS = new Set(['id', 'kind', 'chapterId', 'status', 'urgent', 'deadline', 'country', 'sourceUrl', 'city', 'location', 'hasOpenRoles', 'pickedAt']);
 const chapterId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value);
 const timestamp = value => typeof value === 'string' && Number.isFinite(Date.parse(value));
