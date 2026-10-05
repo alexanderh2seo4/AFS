@@ -1,6 +1,6 @@
 // Fetch only the published anonymous projection. No credentials or private store.
 const KINDS = ['sending', 'hopees', 'hostees', 'families'];
-const RECORD_FIELDS = new Set(['id', 'kind', 'chapterId', 'status', 'urgent', 'deadline', 'country', 'sourceUrl', 'city', 'location']);
+const RECORD_FIELDS = new Set(['id', 'kind', 'chapterId', 'status', 'urgent', 'deadline', 'country', 'sourceUrl', 'city', 'location', 'hasOpenRoles', 'pickedAt']);
 const chapterId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value);
 const timestamp = value => typeof value === 'string' && Number.isFinite(Date.parse(value));
 const abortError = () => new DOMException('Anfrage wurde ersetzt.', 'AbortError');
@@ -67,6 +67,8 @@ function validateChapter(data, chapter, manifest) {
     const seen = new Set();
     for (const record of data.records[kind]) {
       if (!record || Object.keys(record).some(k => !RECORD_FIELDS.has(k)) || !/^[a-f0-9]{20}$/.test(record.id) || record.kind !== kind || seen.has(record.id)) throw new DataError('invalid');
+      if(record.hasOpenRoles!==undefined&&(kind!=='sending'||typeof record.hasOpenRoles!=='boolean'))throw new DataError('invalid');
+      if(record.pickedAt!==undefined&&(kind!=='sending'||record.status!=='assigned'||!/^\d{4}-\d{2}-\d{2}$/.test(record.pickedAt)||!Number.isFinite(Date.parse(record.pickedAt))||new Date(record.pickedAt).toISOString().slice(0,10)!==record.pickedAt))throw new DataError('invalid');
       if (chapter === 'all' ? !(ids.has(record.chapterId) || kind === 'sending' && record.chapterId === 'unassigned') : record.chapterId !== chapter) throw new DataError('invalid');
       seen.add(record.id);
     }

@@ -13,6 +13,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -170,7 +171,7 @@ def audit_tracked(directory, mcp=False):
 
 
 def audit_public_data(root):
-    fields={'id','kind','chapterId','status','urgent','deadline','country','sourceUrl','city','location'}
+    fields={'id','kind','chapterId','status','urgent','deadline','country','sourceUrl','city','location','hasOpenRoles','pickedAt'}
     manifest=json.loads((root/'manifest.json').read_text())
     if set(manifest) != {'version','updatedAt','chapters','counts','defaultChapterId','defaultResidence','privacy','generation'} or manifest['version'] != 1 or not re.fullmatch(r'[a-f0-9]{64}',manifest.get('generation','')):
         raise PublishError('The public map manifest failed its field audit.')
@@ -193,6 +194,14 @@ def audit_public_data(root):
                     raise PublishError('Unapproved field in public map record.')
                 if not record.get('sourceUrl','').startswith('https://www.afser.de/'):
                     raise PublishError('Unapproved public source URL.')
+                if 'hasOpenRoles' in record and (kind!='sending' or type(record['hasOpenRoles']) is not bool):
+                    raise PublishError('Invalid public interview role metadata.')
+                if 'pickedAt' in record:
+                    try:
+                        valid=kind=='sending' and record['status']=='assigned' and date.fromisoformat(record['pickedAt']).isoformat()==record['pickedAt']
+                    except (ValueError,TypeError):
+                        valid=False
+                    if not valid:raise PublishError('Invalid public pickup date.')
                 location=record.get('location')
                 if location and (set(location)-{'lat','lon','radiusKm','scope'} or location.get('radiusKm')!=(0 if kind=='hopees' else 1)):
                     raise PublishError('Unapproved public location fields or radius.')

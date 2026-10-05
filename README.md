@@ -2,12 +2,12 @@
 
 Public anonymous volunteer maps on GitHub Pages, with a separate private local AFSer importer and MCP server.
 
-- `/sending/`: active open Sending homeinterviews, urgent highlighting, nearby suggestions and the verified AFSer project page for signing up.
-- `/hopees/`: relevant active outgoing participants, grouped by destination country.
+- `/sending/`: published Sending homeinterviews, including open and picked slots, urgent highlighting, nearby suggestions and verified AFSer project links. Filters offer open slots, picked interviews, and pickups detected in the last 30 days.
+- `/hopees/`: outgoing students currently abroad by default, grouped by destination country. The filter can show preparation or all current outgoing participants.
 - `/hostees/`: active hosted students, with approximate location areas and source links.
 - `/families/`: active host families and Hosting homeinterviews.
 
-München loads by default, without a login or a location dialog. Visitors can change their residence, select a chapter, or choose **Alle verfügbaren anzeigen** to see all available records across committees. This also clears the urgency filter; the selected scope is remembered in the browser. The committee picker lists only committees with available data in the current section. A single validated aggregate supplies this availability list and is reused for the all-available view; individual committee files are loaded when selected. Residence preferences remain in the browser. The default distance reference is Munich's public city centroid, not a visitor's detected location.
+The map opens by default, including on phones. On the first visit, visitors choose only their city/postcode; München is prefilled. The matching chapter is selected automatically and can then be changed above the map, including **Alle verfügbaren anzeigen**, which clears the current record and urgency filters. Returning visitors keep their location and selected chapter. Only the selected chapter file is fetched by default. Residence preferences remain in the browser. The default distance reference is Munich's public city centroid, not a visitor's detected location.
 
 ## Public data and private source
 
@@ -43,7 +43,11 @@ python3 scripts/update_public.py once
 
 ## Source coverage
 
-The importer uses AFSer's authenticated read-only APIs and the interview task board. It checks list completeness, follows all board pages, partitions capped student lists by chapter and source status/year, and verifies open interview roles. Student-list completeness is checked within the current AFSer account’s accessible scope. Sending covers Germany; participant and hosting records currently returned by the account cover Süd. All source fields returned by supported endpoints remain local; only relevant active records enter the public map.
+The importer uses AFSer's authenticated read-only APIs and the interview task board. It checks list completeness within the account's accessible source scope, follows all board pages, partitions capped student lists by chapter and source status/year, and verifies open interview roles. All source fields returned by supported endpoints remain local; only relevant active records enter the public map.
+
+The database includes all 95 committees, a Germany-wide aggregate, and nationwide postcode/locality geography. Sending interviews cover Germany. The current AFSer account returns participant and hosting data for Süd; checks with Hamburg and the Nord/West source filters return no records. Empty participant or hosting lists outside Süd do not establish that there are no active records there. Germany-wide coverage for those categories requires broader source access. The currently accessible data is retained.
+
+Interview pickup dates are inferred only from a decrease in open slots between successful committed imports. Existing assignments without that evidence retain an unknown date and remain in the picked/all view; they are never stamped as newly picked. Fully picked interviews no longer show a signup action. Partially picked interviews retain the link to their remaining open slots.
 
 The optional historical interview API returns only 2,000 of 4,489 records and exposes no usable pagination. This limitation is recorded in the local coverage manifest; it does not limit the fully traversed actionable interview board.
 

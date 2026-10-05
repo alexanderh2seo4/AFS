@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+import {visibleRecords,hasOpenInterview} from '../../docs/assets/record-filters.js';
 import {latestRequest,publicDataStore} from '../../docs/assets/data-client.js';
 
 // Exercise the real application fetch functions with a minimal DOM, and actual
 // data-client validation. All records here are invented, with no private store.
-const source=(await readFile(new URL('../../docs/assets/app.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').split("initMap();setMobileView('list');")[0];
+const source=(await readFile(new URL('../../docs/assets/app.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').split('initMap();setMobileView(')[0];
 const t1='2026-10-05T05:00:00Z',t2='2026-10-05T06:00:00Z';
 const manifest=(time=t1)=>({version:1,updatedAt:time,chapters:[{id:'MUC',name:'München'},{id:'FRE',name:'Freiburg'}],defaultChapterId:'MUC'});
 const sendingRecord=id=>({id:(id==='MUC'?'a':'b').repeat(20),kind:'sending',chapterId:id,status:'open',urgent:true,city:'Fixture',sourceUrl:'https://www.afser.de/ereignis-liste/avtproject/42.html'});
@@ -27,7 +28,7 @@ function app(fetchImpl,saved={}){
   const elements=new Map();const get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id)};
   get('sort-select').value='distance';
   const document={getElementById:get,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:get,body:new Element()};
-  const context=vm.createContext({document,location:{pathname:'/AFS/sending/'},localStorage:{getItem:key=>preferences.get(key)||null,setItem:(key,value)=>preferences.set(key,value)},sessionStorage:{getItem(){return null}},URL,URLSearchParams,Intl,Date,Map,Set,structuredClone,globalThis:{},matchMedia:()=>({matches:false}),ResizeObserver:class{observe(){}},requestAnimationFrame:()=>{},addEventListener(){},setTimeout,clearTimeout,latestRequest,publicDataStore:(root)=>publicDataStore(root,{fetchImpl}),DEFAULT_RESIDENCE:{city:'München',location:{lat:48.13,lon:11.57}},searchKey:s=>s.toLowerCase().replace('ü','u'),findPublicPlaces:async()=>[]});
+  const context=vm.createContext({document,location:{pathname:'/AFS/sending/'},localStorage:{getItem:key=>preferences.get(key)||null,setItem:(key,value)=>preferences.set(key,value)},sessionStorage:{getItem(){return null}},URL,URLSearchParams,Intl,Date,Map,Set,structuredClone,globalThis:{},matchMedia:()=>({matches:false,addEventListener(){}}),ResizeObserver:class{observe(){}},requestAnimationFrame:()=>{},addEventListener(){},setTimeout,clearTimeout,visibleRecords,hasOpenInterview,latestRequest,publicDataStore:(root)=>publicDataStore(root,{fetchImpl}),DEFAULT_RESIDENCE:{city:'München',location:{lat:48.13,lon:11.57}},searchKey:s=>s.toLowerCase().replace('ü','u'),findPublicPlaces:async()=>[]});
   vm.runInContext(source.replace('import.meta.url',"'https://example.invalid/AFS/assets/app.js'"),context);
   return {get,preference:key=>preferences.get(key),run:code=>vm.runInContext(code,context)};
 }

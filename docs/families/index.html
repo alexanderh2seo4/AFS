@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="../assets/vendor/leaflet.css"><link rel="stylesheet" href="../assets/app.css">
   <script defer src="../assets/vendor/leaflet.js"></script><script type="module" src="../assets/app.js"></script>
 </head>
-<body>
+<body data-mobile-view="map">
   <header class="header">
     <a class="brand" href="../" aria-label="AFS Karte Startseite"><img class="brand-logo" src="../assets/afs-logo.svg" alt="AFS" width="64" height="43"><span>Karte</span></a>
     <nav aria-label="Bereiche"><a data-route="sending" class="active" href="../sending/">Sending</a><a data-route="hopees" href="../hopees/">Hopees</a><a data-route="hostees" href="../hostees/">Hostees</a><a data-route="families" href="../families/">Gastfamilien</a></nav>
@@ -23,13 +23,14 @@
     <section class="toolbar" aria-label="Karte filtern">
       <label class="chapter-picker"><span>Komitee</span><select id="chapter-select" disabled><option value="">Bitte auswählen</option></select></label>
       <div class="scope-note" id="scope-note">Wähle deinen Wohnort oder dein Komitee.</div>
+      <label class="record-filter" id="record-filter-control">Anzeige <select id="record-filter"></select></label>
       <label class="urgent-filter" id="urgent-control"><input id="urgent-only" type="checkbox">Nur dringend</label>
       <button id="refresh-button" class="subtle-button" disabled aria-label="Daten aktualisieren">↻ <span>Aktualisieren</span></button>
     </section>
     <p id="data-notice" class="data-notice" role="status" hidden></p>
     <div class="mobile-view-switch" role="group" aria-label="Ergebnisansicht">
-      <button type="button" data-mobile-view="list" aria-pressed="true" aria-controls="results-panel">Liste</button>
-      <button type="button" data-mobile-view="map" aria-pressed="false" aria-controls="map-panel">Karte</button>
+      <button type="button" data-mobile-view="list" aria-pressed="false" aria-controls="results-panel">Liste</button>
+      <button type="button" data-mobile-view="map" aria-pressed="true" aria-controls="map-panel">Karte</button>
     </div>
     <section class="workspace">
       <aside class="results" id="results-panel" aria-label="Ergebnisse">
@@ -45,7 +46,7 @@
     <div class="scope-actions"><button id="show-all-button" class="show-all-button" type="button" aria-pressed="false" disabled>Alle verfügbaren anzeigen</button></div>
   </main>
   <dialog id="residence-dialog" aria-labelledby="residence-title">
-    <form id="residence-form"><button type="button" class="dialog-close" data-close aria-label="Schließen">×</button><p class="eyebrow">DEIN KOMITEE</p><h2 id="residence-title">Wo wohnst du?</h2><p>Dein Ort hilft uns, das passende Komitee und die nächsten Interviews zu finden. Eine Stadt oder Postleitzahl genügt.</p><label for="city-input">Stadt oder Postleitzahl</label><input id="city-input" autocomplete="off" placeholder="z. B. München oder 80331" maxlength="80"><div id="city-options" class="city-options" aria-live="polite"></div><div class="divider">oder Komitee direkt auswählen</div><label for="residence-chapter">Dein Komitee</label><select id="residence-chapter"><option value="">Bitte auswählen</option></select><p class="form-message" id="residence-message" role="status"></p><button class="primary wide" type="submit">Mein Komitee anzeigen</button><p class="small-note">Dein Wohnort bleibt in diesem Browser. Wir fragen keine genaue Adresse ab.</p></form>
+    <form id="residence-form"><button type="button" class="dialog-close" data-close aria-label="Schließen">×</button><p class="eyebrow">DEIN WOHNORT</p><h2 id="residence-title">Wo wohnst du?</h2><p>Eine Stadt oder Postleitzahl genügt. Dein Komitee finden wir automatisch. Du kannst es anschließend über der Karte ändern.</p><label for="city-input">Stadt oder Postleitzahl</label><input id="city-input" autocomplete="off" placeholder="z. B. München oder 80331" maxlength="80"><div id="city-options" class="city-options" aria-live="polite"></div><p class="form-message" id="residence-message" role="status"></p><button class="primary wide" type="submit">Karte anzeigen</button><p class="small-note">Dein Wohnort bleibt in diesem Browser. Wir fragen keine genaue Adresse ab.</p></form>
   </dialog>
   <dialog id="privacy-dialog" aria-labelledby="privacy-title"><button class="dialog-close" data-close aria-label="Schließen">×</button><p class="eyebrow">DATENSCHUTZ & QUELLEN</p><h2 id="privacy-title">Nur das Nötige auf der Karte</h2><p>Die anonymisierten Kartendaten sind öffentlich auf GitHub gespeichert. Namen, Kontaktangaben, genaue Adressen und vollständige AFSer-Datensätze bleiben lokal und werden nicht veröffentlicht.</p><p>Homeinterviews, Hostees und Gastfamilien erscheinen als 1-km-Kreise mit zufällig versetztem Mittelpunkt auf Basis öffentlicher Ortskoordinaten. Die Kreisfläche ist kein bestätigter Wohnort. Entfernungen sind Schätzungen. Hopees erscheinen ausschließlich im Gastland, ohne Wohnadresse. Dein Wohnort wird lokal im Browser gespeichert.</p><p>Die Kartenkacheln stammen von OpenStreetMap. Dabei erhält der Kartenanbieter deine IP-Adresse und den angezeigten Kartenausschnitt. Es werden keine Namen, Hausadressen oder AFSer-Zugangscodes an den Kartenanbieter gesendet.</p><p>Datenquelle: <a href="https://www.afser.de/" target="_blank" rel="noopener noreferrer">AFSer.de</a>. Karten: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-Mitwirkende</a>. Ungefähre Ortskoordinaten: <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0). Kartenbibliothek: Leaflet (BSD-2-Clause).</p><p id="sync-info" class="small-note">Zuletzt veröffentlichter Datenstand wird von GitHub geladen.</p></dialog>
   <div id="toast" role="status" hidden></div>
